@@ -8,7 +8,7 @@ COPY pnpm-lock.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile --prod
 
 COPY src ./src
-COPY data ./data
+RUN mkdir -p /app/data && echo "[]" > /app/data/sites.json
 
 ENV NODE_ENV=production
 ENV CODEX_WP_BRIDGE_REGISTRY_HOST=0.0.0.0
