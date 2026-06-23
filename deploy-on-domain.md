@@ -3,7 +3,7 @@
 ## Final values to use in the plugin
 
 - `Registry URL`: `https://mcp.criu.com.co/register-site`
-- `Registry token`: `c201ddacbedd7ce4ee761a72c3142cb729c7e352c7889fd1`
+- `Registry token`: `REEMPLAZAR_CON_TOKEN_SEGURO`
 
 ## What to deploy
 
@@ -22,7 +22,7 @@ Use the included `Dockerfile`.
 Required environment variable:
 
 ```env
-CODEX_WP_BRIDGE_REGISTRY_TOKEN=c201ddacbedd7ce4ee761a72c3142cb729c7e352c7889fd1
+CODEX_WP_BRIDGE_REGISTRY_TOKEN=REEMPLAZAR_CON_TOKEN_SEGURO
 ```
 
 Port exposed by the app:
@@ -48,7 +48,7 @@ node src/registry-server.js
 Required environment variables:
 
 ```env
-CODEX_WP_BRIDGE_REGISTRY_TOKEN=c201ddacbedd7ce4ee761a72c3142cb729c7e352c7889fd1
+CODEX_WP_BRIDGE_REGISTRY_TOKEN=REEMPLAZAR_CON_TOKEN_SEGURO
 CODEX_WP_BRIDGE_SITES_FILE=/ruta/real/sites.json
 CODEX_WP_BRIDGE_REGISTRY_PORT=8787
 ```
@@ -94,7 +94,7 @@ Recommended setup:
 2. If it responds with `ok: true`, the registry is live.
 3. In the plugin put:
    - `Registry URL`: `https://mcp.criu.com.co/register-site`
-   - `Registry token`: `c201ddacbedd7ce4ee761a72c3142cb729c7e352c7889fd1`
+   - `Registry token`: `REEMPLAZAR_CON_TOKEN_SEGURO`
 4. Save the plugin settings.
 5. The site should auto-register in `wp_criu`.
 
