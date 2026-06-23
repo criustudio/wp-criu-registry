@@ -5,7 +5,7 @@ import http from "node:http";
 import path from "node:path";
 
 const host = process.env.CODEX_WP_BRIDGE_REGISTRY_HOST || "0.0.0.0";
-const port = Number(process.env.CODEX_WP_BRIDGE_REGISTRY_PORT || 8787);
+const port = Number(process.env.PORT || process.env.CODEX_WP_BRIDGE_REGISTRY_PORT || 8787);
 const registryToken = process.env.CODEX_WP_BRIDGE_REGISTRY_TOKEN || "";
 const sitesFile = path.resolve(
   process.env.CODEX_WP_BRIDGE_SITES_FILE ||
