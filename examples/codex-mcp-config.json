@@ -6,6 +6,8 @@
         "C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/src/server.js"
       ],
       "env": {
+        "CODEX_WP_BRIDGE_REGISTRY_URL": "https://mcp.criu.com.co",
+        "CODEX_WP_BRIDGE_REGISTRY_TOKEN": "REEMPLAZAR_CON_TU_TOKEN_DE_REGISTRO",
         "CODEX_WP_BRIDGE_SITES_FILE": "C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/data/sites.json"
       }
     }

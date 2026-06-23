@@ -8,7 +8,7 @@ import { z } from "zod";
 
 const server = new McpServer({
   name: "codex-wp-bridge-mcp",
-  version: "0.2.0"
+  version: "0.3.0"
 });
 
 function getSitesFile() {
@@ -19,13 +19,9 @@ function getSitesFile() {
   return path.resolve(configured);
 }
 
-function loadSites() {
-  const file = getSitesFile();
-  const raw = fs.readFileSync(file, "utf8");
-  const data = JSON.parse(raw);
-
+function normalizeSites(data) {
   if (!Array.isArray(data)) {
-    throw new Error("El archivo de sitios debe ser un arreglo JSON.");
+    throw new Error("La fuente de sitios debe ser un arreglo JSON.");
   }
 
   return data.map((site) => ({
@@ -39,8 +35,48 @@ function loadSites() {
   }));
 }
 
-function resolveSite(siteRef) {
-  const sites = loadSites();
+function loadSitesFromFile() {
+  const file = getSitesFile();
+  const raw = fs.readFileSync(file, "utf8");
+  return normalizeSites(JSON.parse(raw));
+}
+
+async function loadSites() {
+  const registryUrl = process.env.CODEX_WP_BRIDGE_REGISTRY_URL;
+  const registryToken = process.env.CODEX_WP_BRIDGE_REGISTRY_TOKEN;
+
+  if (!registryUrl) {
+    return loadSitesFromFile();
+  }
+
+  if (!registryToken) {
+    throw new Error("Falta CODEX_WP_BRIDGE_REGISTRY_TOKEN para consultar el registry remoto.");
+  }
+
+  const response = await fetch(registryUrl.replace(/\/$/, "") + "/sites", {
+    headers: {
+      Authorization: `Bearer ${registryToken}`
+    }
+  });
+
+  const rawText = await response.text();
+  let parsed = null;
+
+  try {
+    parsed = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    parsed = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Registry ${response.status}: ${rawText || response.statusText}`);
+  }
+
+  return normalizeSites(parsed?.sites ?? []);
+}
+
+async function resolveSite(siteRef) {
+  const sites = await loadSites();
   const needle = String(siteRef ?? "").trim().toLowerCase();
   const match = sites.find((site) =>
     site.site_id.toLowerCase() === needle ||
@@ -72,7 +108,7 @@ function textResult(value, summary) {
 }
 
 async function bridgeRequest(siteRef, method, endpoint, body) {
-  const site = resolveSite(siteRef);
+  const site = await resolveSite(siteRef);
   const url = `${site.bridge_url.replace(/\/$/, "")}${endpoint}`;
   const response = await fetch(url, {
     method,
@@ -127,7 +163,7 @@ server.tool(
     environment: z.enum(["production", "staging", "development"]).optional()
   },
   async ({ environment }) => {
-    const sites = loadSites()
+    const sites = (await loadSites())
       .filter((site) => !environment || site.environment === environment)
       .map((site) => ({
         site_id: site.site_id,

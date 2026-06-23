@@ -90,6 +90,17 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (req.method === "GET" && url.pathname === "/sites") {
+    if (!requireAuth(req)) {
+      return sendJson(res, 401, { ok: false, error: "Unauthorized" });
+    }
+
+    return sendJson(res, 200, {
+      ok: true,
+      sites: loadSites()
+    });
+  }
+
   if (req.method === "POST" && url.pathname === "/register-site") {
     if (!requireAuth(req)) {
       return sendJson(res, 401, { ok: false, error: "Unauthorized" });
