@@ -82,7 +82,7 @@ function normalizeSite(site) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
-  if (req.method === "GET" && url.pathname === "/health") {
+  if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
     return sendJson(res, 200, {
       ok: true,
       service: "wp_criu_registry",
