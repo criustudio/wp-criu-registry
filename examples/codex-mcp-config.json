@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "wp_criu": {
+      "command": "node",
+      "args": [
+        "C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/src/server.js"
+      ],
+      "env": {
+        "CODEX_WP_BRIDGE_SITES_FILE": "C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/data/sites.json"
+      }
+    }
+  }
+}

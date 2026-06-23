@@ -1,0 +1,21 @@
+{
+  "name": "codex-wp-bridge-mcp",
+  "version": "0.2.0",
+  "description": "Servidor MCP local para operar uno o varios sitios WordPress que tengan instalado Codex WP Admin Bridge.",
+  "type": "module",
+  "bin": {
+    "codex-wp-bridge-mcp": "./src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "start:registry": "node src/registry-server.js",
+    "check": "node --check src/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.2",
+    "zod": "^3.25.76"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
