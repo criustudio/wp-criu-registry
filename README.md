@@ -145,6 +145,8 @@ Diseño recomendado:
 
 Hay una guía más aterrizada de uso personal, despliegue y onboarding en [docs/OPERACION_PERSONAL.md](./docs/OPERACION_PERSONAL.md).
 
+Si este repo ya está desplegado en producción, el estado operativo real y los endpoints live actuales quedaron documentados en [docs/ESTADO_LIVE_MCP_CRIU.md](./docs/ESTADO_LIVE_MCP_CRIU.md).
+
 ## Scripts útiles
 
 Importar sitios desde el registry vivo actual a `data/sites.json`:
