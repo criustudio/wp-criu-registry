@@ -18,6 +18,7 @@ const envSchema = z.object({
   MCP_SERVER_VERSION: z.string().min(1).default("0.2.0"),
   MCP_AUTH_MODE: z.enum(["none", "bearer"]).default("none"),
   MCP_API_KEY: z.string().optional(),
+  MCP_ALLOWED_HOSTS: z.string().default(""),
   ADMIN_API_KEY: z.string().optional(),
   ADMIN_SESSION_SECRET: z.string().optional(),
   HUB_STATE_FILE: z.string().default(path.resolve(process.cwd(), "data", "hub-state.json")),
@@ -34,6 +35,7 @@ export type AppConfig = {
   serverVersion: string;
   authMode: "none" | "bearer";
   apiKey?: string;
+  allowedHosts: string[];
   adminApiKey: string;
   adminSessionSecret: string;
   stateFile: string;
@@ -57,6 +59,15 @@ function parseBootstrapNotionConnections(rawJson: string): BootstrapNotionConnec
   return connections;
 }
 
+function parseAllowedHosts(rawHosts: string): string[] {
+  const hosts = rawHosts
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return [...new Set(hosts)];
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(env);
 
@@ -70,6 +81,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     serverVersion: parsed.MCP_SERVER_VERSION,
     authMode: parsed.MCP_AUTH_MODE,
     apiKey: parsed.MCP_API_KEY,
+    allowedHosts: parseAllowedHosts(parsed.MCP_ALLOWED_HOSTS),
     adminApiKey: parsed.ADMIN_API_KEY ?? parsed.MCP_API_KEY ?? "dev-admin-key",
     adminSessionSecret: parsed.ADMIN_SESSION_SECRET ?? "dev-session-secret",
     stateFile: path.resolve(parsed.HUB_STATE_FILE),

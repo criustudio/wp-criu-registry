@@ -32,6 +32,7 @@ Variables mínimas:
 
 - `MCP_AUTH_MODE=bearer`
 - `MCP_API_KEY=<token privado>`
+- `MCP_ALLOWED_HOSTS=mcp.tu-dominio.com,localhost,127.0.0.1`
 - `ADMIN_API_KEY=<clave del panel>`
 - `ADMIN_SESSION_SECRET=<secreto largo>`
 - `WORDPRESS_REGISTRY_TOKEN=<token del plugin/bridge>`

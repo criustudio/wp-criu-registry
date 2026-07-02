@@ -9,7 +9,10 @@ import { NotionHub } from "./notion.js";
 import { WordPressHub } from "./wordpress.js";
 
 const config = loadConfig();
-const app = createMcpExpressApp();
+const app = createMcpExpressApp({
+  host: "0.0.0.0",
+  allowedHosts: config.allowedHosts.length > 0 ? config.allowedHosts : undefined,
+});
 const store = new StateStore(config);
 const wordPressHub = new WordPressHub(store);
 

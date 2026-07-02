@@ -39,6 +39,7 @@ Recomendadas:
 
 - `MCP_AUTH_MODE=bearer`
 - `MCP_API_KEY`
+- `MCP_ALLOWED_HOSTS=mcp.tudominio.com,localhost,127.0.0.1`
 - `HUB_STATE_FILE=/app/data/hub-state.json`
 
 Bootstrap opcional:
@@ -101,10 +102,11 @@ http://localhost:3000/admin
 1. Crea el servicio desde este directorio.
 2. Persiste `./data` o define un volumen para `HUB_STATE_FILE`.
 3. Configura `MCP_AUTH_MODE=bearer` y un `MCP_API_KEY` privado.
-4. Configura `ADMIN_API_KEY`, `ADMIN_SESSION_SECRET` y `WORDPRESS_REGISTRY_TOKEN`.
-5. Si vienes del `wp_criu_registry` actual, monta el mismo volumen y deja `WORDPRESS_BOOTSTRAP_SITES_FILE=/app/data/sites.json`.
-6. Publica el servicio por HTTPS.
-7. Usa `/mcp` para MCP y `/admin` para onboarding humano.
+4. Configura `MCP_ALLOWED_HOSTS` con tu dominio publico y localhost.
+5. Configura `ADMIN_API_KEY`, `ADMIN_SESSION_SECRET` y `WORDPRESS_REGISTRY_TOKEN`.
+6. Si vienes del `wp_criu_registry` actual, monta el mismo volumen y deja `WORDPRESS_BOOTSTRAP_SITES_FILE=/app/data/sites.json`.
+7. Publica el servicio por HTTPS.
+8. Usa `/mcp` para MCP y `/admin` para onboarding humano.
 
 ## Migración directa desde el registry actual
 
