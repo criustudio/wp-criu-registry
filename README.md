@@ -1,135 +1,175 @@
-# Codex WP Bridge MCP
+# MCP Hub propio para Codex y ChatGPT
 
-Servidor MCP local para operar uno o varios sitios WordPress que tengan instalado `Codex WP Admin Bridge`.
+Este servicio consolida dos cosas en una sola capa:
 
-## Qué resuelve
+- MCP remoto por `Streamable HTTP` para Codex y ChatGPT.
+- Panel técnico y registry compatible para onboarding de conectores y sitios WordPress.
 
-Te da una sola capa de operación desde Codex para:
+## Qué incluye ahora
 
-- listar sitios configurados;
-- inspeccionar un sitio por `site_id`;
-- gestionar plugins y temas;
-- leer y actualizar opciones;
-- leer y escribir archivos;
-- ejecutar SQL de solo lectura;
-- usar `rest-proxy`;
-- revisar traducciones;
-- inspeccionar checkout fields de WooCommerce;
-- registrar sitios automáticamente desde el plugin mediante un endpoint HTTP.
+- Hub MCP con herramientas de Notion y WordPress.
+- State store persistido en JSON para onboarding editable.
+- Panel técnico en `/admin`.
+- Admin API en `/api/admin/*`.
+- Registry WordPress compatible:
+  - `GET /sites`
+  - `GET /sites/:site_id`
+  - `POST /register-site`
+  - `PATCH /sites/:site_id`
+  - `DELETE /sites/:site_id`
 
-## Requisitos
+## Arquitectura
 
-- Node.js 18 o superior.
-- El plugin `Codex WP Admin Bridge` instalado en cada WordPress objetivo.
-- Un registry HTTP accesible para el auto-registro o, como respaldo, un archivo JSON local con la lista de sitios.
+- `src/index.ts`: entrypoint HTTP, `/mcp`, `/health`, `/admin` y rutas de registry.
+- `src/mcp-server.ts`: herramientas MCP de Notion y WordPress.
+- `src/lib/state.ts`: estado persistido del hub.
+- `src/notion.ts`: adaptador Notion por alias.
+- `src/wordpress.ts`: adaptador WordPress compatible con el bridge actual.
+- `src/admin/*`: UI y API técnica de onboarding.
 
-## Instalación
+## Variables de entorno
 
-```powershell
-cd C:\Users\gioba\Documents\Codex\2026-06-23\estuvimos-trabajando-en-un-plugin-que\outputs\codex-wp-bridge-mcp
+Obligatorias en producción:
+
+- `ADMIN_API_KEY`
+- `ADMIN_SESSION_SECRET`
+- `WORDPRESS_REGISTRY_TOKEN`
+
+Recomendadas:
+
+- `MCP_AUTH_MODE=bearer`
+- `MCP_API_KEY`
+- `HUB_STATE_FILE=/app/data/hub-state.json`
+
+Bootstrap opcional:
+
+- `NOTION_CONNECTIONS_JSON`
+- `WORDPRESS_BOOTSTRAP_SITES_FILE`
+
+## Rutas principales
+
+- `GET /`
+- `GET /health`
+- `GET /admin`
+- `POST /mcp`
+- `GET /sites`
+- `POST /register-site`
+
+## Panel técnico
+
+El panel permite:
+
+- crear y editar conexiones Notion;
+- validarlas con `whoami`;
+- registrar sitios WordPress a mano;
+- ver estado de bridge;
+- ocultar o desactivar sitios sin borrarlos lógicamente del modelo;
+- eliminar sitios del registry;
+- ver el catálogo técnico para futuros conectores.
+
+## Compatibilidad WordPress
+
+La idea es no romper el stack actual:
+
+- el plugin WordPress puede seguir enviando auto-registro a `POST /register-site`;
+- el modelo por `site_id`, `site_label` y `base_url` se mantiene;
+- las herramientas MCP WordPress conservan los mismos nombres usados antes.
+
+## Uso local
+
+```bash
 npm install
+copy .env.example .env
+npm run dev
 ```
 
-## Domain deploy
+Pruebas rápidas:
 
-For a real domain deployment like `mcp.criu.com.co`, use:
-
-- [deploy-on-domain.md](/C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/deploy-on-domain.md)
-- [Dockerfile](/C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/Dockerfile)
-- [.env.example](/C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/.env.example)
-
-## Registro automático
-
-Inicia el registry:
-
-```powershell
-cd C:\Users\gioba\Documents\Codex\2026-06-23\estuvimos-trabajando-en-un-plugin-que\outputs\codex-wp-bridge-mcp
-$env:CODEX_WP_BRIDGE_REGISTRY_TOKEN="REEMPLAZAR_CON_TU_TOKEN_DE_REGISTRO"
-$env:CODEX_WP_BRIDGE_SITES_FILE="C:\Users\gioba\Documents\Codex\2026-06-23\estuvimos-trabajando-en-un-plugin-que\outputs\codex-wp-bridge-mcp\data\sites.json"
-npm run start:registry
+```bash
+curl http://localhost:3000/health
+npm run smoke:http
 ```
 
-O en Windows usa:
+Abre:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\start-registry.ps1 -RegistryToken "REEMPLAZAR_CON_TU_TOKEN_DE_REGISTRO"
+```text
+http://localhost:3000/admin
 ```
 
-Luego en el plugin WordPress configura:
+## Despliegue en EasyPanel
 
-- `Registry URL`: `https://tu-registry-publico/register-site`
-- `Registry token`: el mismo token del registry
+1. Crea el servicio desde este directorio.
+2. Persiste `./data` o define un volumen para `HUB_STATE_FILE`.
+3. Configura `MCP_AUTH_MODE=bearer` y un `MCP_API_KEY` privado.
+4. Configura `ADMIN_API_KEY`, `ADMIN_SESSION_SECRET` y `WORDPRESS_REGISTRY_TOKEN`.
+5. Si vienes del `wp_criu_registry` actual, monta el mismo volumen y deja `WORDPRESS_BOOTSTRAP_SITES_FILE=/app/data/sites.json`.
+6. Publica el servicio por HTTPS.
+7. Usa `/mcp` para MCP y `/admin` para onboarding humano.
 
-Cada vez que guardes el plugin, el sitio quedará registrado solo.
+## Migración directa desde el registry actual
 
-Importante:
+Si `mcp.criu.com.co` hoy responde como `wp_criu_registry`, la migración segura para reemplazarlo con este hub es:
 
-- la `Registry URL` debe ser accesible desde el WordPress remoto;
-- si `wp_criu` corre en tu máquina local, expón ese endpoint con un dominio o túnel antes de usar el auto-registro.
+1. Respaldar el volumen actual de `/app/data`.
+2. Mantener el archivo legado `sites.json` en ese mismo volumen.
+3. Desplegar este servicio con:
+   - `HUB_STATE_FILE=/app/data/hub-state.json`
+   - `WORDPRESS_BOOTSTRAP_SITES_FILE=/app/data/sites.json`
+4. Arrancar el hub nuevo.
+5. Confirmar en `/admin` que los sitios heredados aparecieron.
 
-El registry remoto también expone:
+El hub también intenta detectar automáticamente un `sites.json` vecino al `hub-state.json`, de modo que un reemplazo directo no dependa de pasos manuales extra.
 
-- `GET /health` para comprobar salud
-- `GET /sites` con bearer token para que `wp_criu` lea automáticamente todos los sitios vinculados
+## Codex
 
-## Configuración de sitios manual o de respaldo
-
-Usa `examples/sites.example.json` como plantilla si quieres cargar sitios a mano. Luego define:
-
-```powershell
-$env:CODEX_WP_BRIDGE_SITES_FILE="C:\ruta\a\sites.json"
-```
-
-Cada entrada necesita:
-
-- `site_id`
-- `site_label`
-- `environment`
-- `base_url`
-- `bridge_url`
-- `token`
-
-## Prueba local
-
-```powershell
-$env:CODEX_WP_BRIDGE_SITES_FILE="C:\ruta\a\sites.json"
-npm start
-```
-
-El proceso queda esperando tráfico MCP por `stdio`.
-
-## Configuración automática en Codex
-
-La forma recomendada es apuntar `wp_criu` al registry remoto:
+Ejemplo con bearer:
 
 ```toml
-[mcp_servers.wp_criu]
-command = "node"
-args = ["C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/src/server.js"]
-cwd = "C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp"
-enabled = true
-required = false
-startup_timeout_sec = 15
-tool_timeout_sec = 120
-env = { CODEX_WP_BRIDGE_REGISTRY_URL = "https://mcp.criu.com.co", CODEX_WP_BRIDGE_REGISTRY_TOKEN = "REEMPLAZAR_CON_TU_TOKEN_DE_REGISTRO", CODEX_WP_BRIDGE_SITES_FILE = "C:/Users/gioba/Documents/Codex/2026-06-23/estuvimos-trabajando-en-un-plugin-que/outputs/codex-wp-bridge-mcp/data/sites.json" }
+[mcp_servers.criu_hub]
+url = "https://mcp.tudominio.com/mcp"
+bearer_token_env_var = "CRIU_MCP_HUB_TOKEN"
 ```
 
-Con eso, `wp_criu` intenta leer primero desde `mcp.criu.com.co/sites`. Si el registry no está disponible, puedes dejar `CODEX_WP_BRIDGE_SITES_FILE` como respaldo manual.
+El valor de `CRIU_MCP_HUB_TOKEN` debe ser el mismo `MCP_API_KEY` del hub.
 
-## Configuración en Codex
+## ChatGPT
 
-Usa `examples/codex-mcp-config.json` como base para tu bloque `mcpServers`.
+Diseño recomendado:
 
-Nombre recomendado del servidor en Codex:
+- camino principal: `Secure MCP Tunnel`
+- fallback: endpoint HTTPS directo a `/mcp`
 
-- `wp_criu`
+## Guía operativa
 
-## Flujo recomendado
+Hay una guía más aterrizada de uso personal, despliegue y onboarding en [docs/OPERACION_PERSONAL.md](./docs/OPERACION_PERSONAL.md).
 
-1. Inicia o despliega el registry de `wp_criu`.
-2. Configura `wp_criu` en Codex con `CODEX_WP_BRIDGE_REGISTRY_URL` y `CODEX_WP_BRIDGE_REGISTRY_TOKEN`.
-3. Instala el plugin final en WordPress.
-4. Pega `Registry URL` y `Registry token` en `Tools > Codex Bridge`.
-5. Guarda.
-6. El sitio se registra solo en el registry remoto.
-7. Usa `list_sites` en Codex y el nuevo sitio aparecerá sin tocar archivos locales.
+## Scripts útiles
+
+Importar sitios desde el registry vivo actual a `data/sites.json`:
+
+```bash
+LEGACY_REGISTRY_TOKEN=tu_token npm run import:legacy-registry
+```
+
+O explícitamente:
+
+```bash
+node scripts/import-legacy-registry.mjs --url https://mcp.criu.com.co --token tu_token --output ./data/sites.json
+```
+
+Hacer smoke test HTTP/MCP del hub ya levantado:
+
+```bash
+MCP_HUB_URL=https://mcp.criu.com.co MCP_HUB_TOKEN=tu_token npm run smoke:http
+```
+
+## Futuros conectores
+
+Cada integración nueva debería entrar como:
+
+1. manifest del conector
+2. config schema
+3. health check
+4. admin form
+5. entidades administrables
+6. adaptador MCP

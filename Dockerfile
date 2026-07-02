@@ -1,20 +1,15 @@
-FROM node:24-alpine
-
+FROM node:22-alpine AS base
 WORKDIR /app
 
-COPY package.json ./
-COPY pnpm-lock.yaml ./
+COPY package*.json ./
+RUN npm ci
 
-RUN corepack enable && pnpm install --frozen-lockfile --prod
-
+COPY tsconfig.json ./
 COPY src ./src
-RUN mkdir -p /app/data && echo "[]" > /app/data/sites.json
+RUN npm run build
 
 ENV NODE_ENV=production
-ENV CODEX_WP_BRIDGE_REGISTRY_HOST=0.0.0.0
-ENV CODEX_WP_BRIDGE_REGISTRY_PORT=8787
-ENV CODEX_WP_BRIDGE_SITES_FILE=/app/data/sites.json
+ENV PORT=3000
 
-EXPOSE 8787
-
-CMD ["node", "src/registry-server.js"]
+EXPOSE 3000
+CMD ["node", "dist/index.js"]

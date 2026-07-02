@@ -1,0 +1,27 @@
+services:
+  mcp-hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PORT: 3000
+      MCP_SERVER_NAME: criu-mcp-hub
+      MCP_SERVER_VERSION: 0.2.0
+      MCP_AUTH_MODE: bearer
+      MCP_API_KEY: "replace_me_mcp_token"
+      ADMIN_API_KEY: "replace_me_admin"
+      ADMIN_SESSION_SECRET: "replace_me_session"
+      WORDPRESS_REGISTRY_TOKEN: "replace_me_wp_registry"
+      HUB_STATE_FILE: "/app/data/hub-state.json"
+      WORDPRESS_BOOTSTRAP_SITES_FILE: "/app/data/sites.json"
+      NOTION_CONNECTIONS_JSON: >
+        [{"alias":"criu_colombia","label":"Criu Colombia","token":"replace_me","defaultParentPageId":"replace_me"}]
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "3000:3000"
