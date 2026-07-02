@@ -21,6 +21,7 @@ export function renderAdminPage(): string {
       body {
         margin: 0;
         font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        line-height: 1.45;
         color: var(--text);
         background:
           radial-gradient(circle at top left, rgba(184,92,46,.12), transparent 22rem),
@@ -38,9 +39,10 @@ export function renderAdminPage(): string {
       .subtle { color: var(--muted); }
       main {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        grid-template-columns: minmax(260px, .85fr) minmax(320px, 1fr) minmax(360px, 1.1fr) minmax(300px, .95fr);
         gap: 18px;
         padding: 16px 28px 28px;
+        align-items: start;
       }
       section, .hero, .login-card {
         background: var(--panel);
@@ -48,6 +50,7 @@ export function renderAdminPage(): string {
         border-radius: 18px;
         padding: 18px;
         box-shadow: 0 10px 24px rgba(36, 34, 28, 0.06);
+        min-width: 0;
       }
       .hero {
         margin: 0 28px;
@@ -76,7 +79,32 @@ export function renderAdminPage(): string {
         gap: 10px;
         align-items: center;
       }
-      .stack { display: grid; gap: 10px; }
+      .stack {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .form-actions {
+        display: flex;
+      }
+      .form-actions > button {
+        width: 100%;
+        justify-content: center;
+      }
+      .panel-scroll {
+        max-height: 56vh;
+        overflow: auto;
+        padding-right: 4px;
+      }
+      .table-wrap {
+        overflow: auto;
+      }
       input, textarea, select, button {
         font: inherit;
       }
@@ -95,6 +123,11 @@ export function renderAdminPage(): string {
         color: var(--text);
         padding: 9px 14px;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        align-self: start;
       }
       button.primary {
         background: var(--accent);
@@ -131,6 +164,7 @@ export function renderAdminPage(): string {
         border-radius: 12px;
         overflow: auto;
         margin: 0;
+        max-height: 12rem;
       }
       .actions {
         display: flex;
@@ -165,6 +199,47 @@ export function renderAdminPage(): string {
         background: #f0ece2;
         color: var(--text);
         white-space: pre-wrap;
+      }
+      #connector-section { grid-column: 1; }
+      #notion-section { grid-column: 2; }
+      #wordpress-section { grid-column: 3; }
+      #catalog-section { grid-column: 4; }
+      #usage-section { grid-column: 1; }
+      @media (max-width: 1480px) {
+        main {
+          grid-template-columns: minmax(260px, .9fr) minmax(320px, 1fr) minmax(320px, 1fr);
+        }
+        #catalog-section {
+          grid-column: 1 / -1;
+        }
+      }
+      @media (max-width: 1120px) {
+        main {
+          grid-template-columns: repeat(2, minmax(280px, 1fr));
+        }
+        #connector-section,
+        #notion-section,
+        #wordpress-section,
+        #catalog-section,
+        #usage-section {
+          grid-column: auto;
+        }
+      }
+      @media (max-width: 760px) {
+        header {
+          padding: 20px 18px 10px;
+        }
+        .hero {
+          margin: 0 18px;
+        }
+        main {
+          grid-template-columns: 1fr;
+          padding: 14px 18px 24px;
+        }
+        .panel-scroll {
+          max-height: none;
+          padding-right: 0;
+        }
       }
     </style>
   </head>
@@ -211,15 +286,15 @@ export function renderAdminPage(): string {
       </div>
 
       <main>
-        <section class="stack">
-          <div class="row" style="justify-content:space-between">
+        <section id="connector-section" class="stack">
+          <div class="section-head">
             <h2>Conectores activos</h2>
             <span class="subtle">Estado persistido</span>
           </div>
           <div id="connector-overview" class="stack"></div>
         </section>
 
-        <section class="stack">
+        <section id="notion-section" class="stack">
           <h2>Alta Notion</h2>
           <div class="stack">
             <label class="stack"><span>Alias</span><input id="notion-alias" /></label>
@@ -228,14 +303,16 @@ export function renderAdminPage(): string {
             <label class="stack"><span>Default Parent Page ID</span><input id="notion-parent" /></label>
             <label class="stack"><span>Notion Version</span><input id="notion-version" placeholder="2025-09-03" /></label>
           </div>
-          <button id="save-notion" class="primary">Guardar conexión Notion</button>
-          <div class="stack">
+          <div class="form-actions">
+            <button id="save-notion" class="primary">Guardar conexión Notion</button>
+          </div>
+          <div class="stack panel-scroll">
             <h3>Workspaces Notion</h3>
-            <div id="notion-table"></div>
+            <div id="notion-table" class="table-wrap"></div>
           </div>
         </section>
 
-        <section class="stack">
+        <section id="wordpress-section" class="stack">
           <h2>Alta WordPress</h2>
           <div class="stack">
             <label class="stack"><span>site_id</span><input id="wp-site-id" /></label>
@@ -255,20 +332,22 @@ export function renderAdminPage(): string {
             <label class="stack"><span>Tags</span><textarea id="wp-tags" placeholder="Un tag por línea"></textarea></label>
             <label class="stack"><span>Notas internas</span><textarea id="wp-metadata-notes" placeholder="Una nota por línea"></textarea></label>
           </div>
-          <button id="save-wordpress" class="primary">Guardar sitio WordPress</button>
-          <div class="stack">
+          <div class="form-actions">
+            <button id="save-wordpress" class="primary">Guardar sitio WordPress</button>
+          </div>
+          <div class="stack panel-scroll">
             <h3>Sitios WordPress</h3>
-            <div id="wordpress-table"></div>
+            <div id="wordpress-table" class="table-wrap"></div>
           </div>
         </section>
 
-        <section class="stack">
+        <section id="catalog-section" class="stack">
           <h2>Catálogo futuro</h2>
           <p class="subtle">Patrón técnico de onboarding para integrar una plataforma nueva más adelante.</p>
-          <div id="catalog-grid" class="stack"></div>
+          <div id="catalog-grid" class="stack panel-scroll"></div>
         </section>
 
-        <section class="stack">
+        <section id="usage-section" class="stack">
           <h2>Uso personal</h2>
           <p class="subtle">Referencia rápida para conectar Codex, registrar WordPress y operar el hub sin depender de notas externas.</p>
           <div id="usage-guide" class="stack"></div>
