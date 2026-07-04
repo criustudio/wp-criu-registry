@@ -235,6 +235,41 @@ export function renderAdminPage(): string {
         flex-wrap: wrap;
         gap: 6px;
       }
+      .inline-card {
+        display: grid;
+        gap: 10px;
+      }
+      .inline-card-head {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 10px 16px;
+        align-items: start;
+      }
+      .inline-card-meta {
+        display: grid;
+        gap: 4px;
+      }
+      .inline-card-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      }
+      .inline-card-cell {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: rgba(255,255,255,.72);
+      }
+      .inline-card-cell strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .actions.below {
+        padding-top: 2px;
+      }
       .pill {
         display: inline-flex;
         border: 1px solid var(--line);
@@ -550,25 +585,32 @@ export function renderAdminPage(): string {
       function renderNotionTable() {
         const notionConnectors = state.connectors.filter((connector) => connector.kind === "notion");
         const html = notionConnectors.length
-          ? '<table><thead><tr><th>Alias</th><th>Estado</th><th>Workspace</th><th>Parent</th><th>Último check</th><th>Acciones</th></tr></thead><tbody>'
+          ? '<div class="stack">'
             + notionConnectors.map((connector) => {
               const lastCheck = connector.last_check_at || "Nunca";
               const parent = connector.config.defaultParentPageId || "-";
               const workspace = connector.config.workspaceName || connector.config.workspaceId || "-";
-              return '<tr>'
-                + '<td><strong>' + connector.config.alias + '</strong><br><span class="subtle">' + connector.label + '</span></td>'
-                + '<td>' + connector.status + '<br><span class="subtle">' + connector.auth_mode + '</span>' + (connector.last_error ? '<br><span class="subtle">' + connector.last_error + '</span>' : '') + '</td>'
-                + '<td>' + workspace + '</td>'
-                + '<td><code>' + parent + '</code></td>'
-                + '<td>' + lastCheck + '</td>'
-                + '<td class="actions">'
+              const statusBlock = connector.status + ' · ' + connector.auth_mode;
+              const errorBlock = connector.last_error ? '<div class="message">' + connector.last_error + '</div>' : '';
+              return '<article class="inline-card" style="border:1px solid var(--line);border-radius:16px;padding:14px;">'
+                + '<div class="inline-card-head">'
+                + '<div class="inline-card-meta"><strong>' + connector.config.alias + '</strong><span class="subtle">' + connector.label + '</span></div>'
+                + '<span class="pill">' + statusBlock + '</span>'
+                + '</div>'
+                + '<div class="inline-card-grid">'
+                + '<div class="inline-card-cell"><strong>Workspace</strong><span>' + workspace + '</span></div>'
+                + '<div class="inline-card-cell"><strong>Parent</strong><code>' + parent + '</code></div>'
+                + '<div class="inline-card-cell"><strong>Ultimo check</strong><span>' + lastCheck + '</span></div>'
+                + '</div>'
+                + errorBlock
+                + '<div class="actions below">'
                 + '<button data-action="validate-notion" data-alias="' + connector.config.alias + '">Validar</button>'
                 + '<button data-action="toggle-notion" data-alias="' + connector.config.alias + '">' + (connector.status === "enabled" ? "Desactivar" : "Activar") + '</button>'
                 + '<button data-action="edit-notion" data-alias="' + connector.config.alias + '">Editar</button>'
                 + '<button class="danger" data-action="delete-notion" data-alias="' + connector.config.alias + '">Eliminar</button>'
-                + '</td></tr>';
+                + '</div></article>';
             }).join("")
-            + '</tbody></table>'
+            + '</div>'
           : '<p class="subtle">No hay conexiones de Notion todavía.</p>';
         document.getElementById("notion-table").innerHTML = html;
       }
