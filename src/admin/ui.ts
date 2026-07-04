@@ -16,6 +16,7 @@ export function renderAdminPage(): string {
         --accent: #0f5c4d;
         --accent-2: #b85c2e;
         --danger: #9d1f1f;
+        --shell: min(1680px, calc(100vw - 40px));
       }
       * { box-sizing: border-box; }
       body {
@@ -30,6 +31,8 @@ export function renderAdminPage(): string {
       }
       header {
         padding: 24px 28px 12px;
+        width: var(--shell);
+        margin: 0 auto;
       }
       h1, h2, h3 { margin: 0; font-family: "IBM Plex Mono", "Consolas", monospace; }
       h1 { font-size: 24px; }
@@ -39,9 +42,15 @@ export function renderAdminPage(): string {
       .subtle { color: var(--muted); }
       main {
         display: grid;
-        grid-template-columns: minmax(260px, .85fr) minmax(320px, 1fr) minmax(360px, 1.1fr) minmax(300px, .95fr);
+        grid-template-columns: minmax(240px, 0.88fr) minmax(380px, 1.15fr) minmax(440px, 1.32fr);
+        grid-template-areas:
+          "connector notion wordpress"
+          "usage notion wordpress"
+          "catalog catalog catalog";
         gap: 18px;
-        padding: 16px 28px 28px;
+        width: var(--shell);
+        margin: 0 auto;
+        padding: 16px 0 28px;
         align-items: start;
       }
       section, .hero, .login-card {
@@ -53,7 +62,8 @@ export function renderAdminPage(): string {
         min-width: 0;
       }
       .hero {
-        margin: 0 28px;
+        width: var(--shell);
+        margin: 0 auto;
         display: grid;
         gap: 10px;
       }
@@ -84,6 +94,9 @@ export function renderAdminPage(): string {
         gap: 10px;
         align-content: start;
       }
+      .stack > * {
+        min-width: 0;
+      }
       .section-head {
         display: flex;
         align-items: baseline;
@@ -98,12 +111,13 @@ export function renderAdminPage(): string {
         justify-content: center;
       }
       .panel-scroll {
-        max-height: 56vh;
+        max-height: clamp(18rem, 48vh, 34rem);
         overflow: auto;
         padding-right: 4px;
       }
       .table-wrap {
         overflow: auto;
+        min-width: 0;
       }
       input, textarea, select, button {
         font: inherit;
@@ -146,12 +160,14 @@ export function renderAdminPage(): string {
         width: 100%;
         border-collapse: collapse;
         font-size: 14px;
+        table-layout: fixed;
       }
       th, td {
         text-align: left;
         padding: 10px 8px;
         border-bottom: 1px solid var(--line);
         vertical-align: top;
+        overflow-wrap: anywhere;
       }
       th { color: var(--muted); font-weight: 600; }
       code, pre {
@@ -200,45 +216,50 @@ export function renderAdminPage(): string {
         color: var(--text);
         white-space: pre-wrap;
       }
-      #connector-section { grid-column: 1; }
-      #notion-section { grid-column: 2; }
-      #wordpress-section { grid-column: 3; }
-      #catalog-section { grid-column: 4; }
-      #usage-section { grid-column: 1; }
-      @media (max-width: 1480px) {
+      #connector-section { grid-area: connector; }
+      #notion-section { grid-area: notion; }
+      #wordpress-section { grid-area: wordpress; }
+      #catalog-section { grid-area: catalog; }
+      #usage-section { grid-area: usage; }
+      @media (max-width: 1400px) {
         main {
-          grid-template-columns: minmax(260px, .9fr) minmax(320px, 1fr) minmax(320px, 1fr);
-        }
-        #catalog-section {
-          grid-column: 1 / -1;
+          grid-template-columns: minmax(300px, 1fr) minmax(340px, 1fr);
+          grid-template-areas:
+            "notion wordpress"
+            "connector catalog"
+            "usage usage";
         }
       }
-      @media (max-width: 1120px) {
+      @media (max-width: 980px) {
         main {
-          grid-template-columns: repeat(2, minmax(280px, 1fr));
-        }
-        #connector-section,
-        #notion-section,
-        #wordpress-section,
-        #catalog-section,
-        #usage-section {
-          grid-column: auto;
+          grid-template-columns: 1fr;
+          grid-template-areas:
+            "notion"
+            "wordpress"
+            "connector"
+            "catalog"
+            "usage";
         }
       }
       @media (max-width: 760px) {
         header {
-          padding: 20px 18px 10px;
+          width: min(100vw - 24px, 100%);
+          padding: 20px 0 10px;
         }
         .hero {
-          margin: 0 18px;
+          width: min(100vw - 24px, 100%);
         }
         main {
-          grid-template-columns: 1fr;
-          padding: 14px 18px 24px;
+          width: min(100vw - 24px, 100%);
+          padding: 14px 0 24px;
         }
         .panel-scroll {
           max-height: none;
           padding-right: 0;
+        }
+        section, .hero, .login-card {
+          border-radius: 16px;
+          padding: 16px;
         }
       }
     </style>
