@@ -300,7 +300,7 @@ export function renderAdminPage(): string {
           <div class="stack">
             <label class="stack"><span>Alias</span><input id="notion-alias" /></label>
             <label class="stack"><span>Label</span><input id="notion-label" /></label>
-            <label class="stack"><span>Default Parent Page ID</span><input id="notion-parent" /></label>
+            <label class="stack"><span>Default Parent Page ID (opcional)</span><input id="notion-parent" /></label>
             <label class="stack"><span>Notion Version</span><input id="notion-version" placeholder="2025-09-03" /></label>
           </div>
           <div class="form-actions">
@@ -522,7 +522,7 @@ export function renderAdminPage(): string {
           '<div class="stack" style="border:1px solid var(--line);border-radius:12px;padding:12px">'
             + '<h3>Notion workspaces</h3>'
             + '<pre>' + (notionAliases.length ? notionAliases.join("\\n") : "Todavía no hay aliases dados de alta.") + '</pre>'
-            + '<p class="subtle">Cada alias nuevo queda usable por MCP apenas autorizas la app de Notion y validas con <code>whoami</code>.</p>'
+            + '<p class="subtle">Cada alias nuevo queda usable por MCP apenas autorizas la app de Notion y validas con <code>whoami</code>. Si dejas parent vacio y la conexion es OAuth, las paginas nuevas se crean en Private.</p>'
           + '</div>',
         ].join("");
       }
@@ -534,7 +534,7 @@ export function renderAdminPage(): string {
           return;
         }
 
-        container.textContent = "Conexion por autorizacion Notion activa. Redirect URI actual: " + (state.notionOAuth.redirect_uri || "(sin redirect_uri)");
+        container.textContent = "Conexion por autorizacion Notion activa. Redirect URI actual: " + (state.notionOAuth.redirect_uri || "(sin redirect_uri)") + ". Si no defines parent, el hub podra crear paginas nuevas en Private.";
       }
 
       function render() {

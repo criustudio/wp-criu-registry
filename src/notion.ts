@@ -287,16 +287,29 @@ export class NotionHub {
 
   async createPage(alias: string, input: { title: string; markdown?: string; parentPageId?: string }) {
     return this.runWithClient(alias, async (client, connection) => {
+      const record = this.getRecord(alias);
       const parentPageId = input.parentPageId ?? connection.defaultParentPageId;
 
-      if (!parentPageId) {
-        throw new Error(`Workspace ${alias} does not have a defaultParentPageId configured and parentPageId was not provided.`);
+      const parent =
+        parentPageId
+          ? {
+              page_id: parentPageId,
+            }
+          : record.auth_mode === "oauth"
+            ? {
+                workspace: true as const,
+                type: "workspace" as const,
+              }
+            : null;
+
+      if (!parent) {
+        throw new Error(
+          `Workspace ${alias} no tiene defaultParentPageId configurado. Para tokens manuales debes definir un parent; con OAuth se permite crear en Private.`,
+        );
       }
 
       const response = await client.pages.create({
-        parent: {
-          page_id: parentPageId,
-        },
+        parent,
         properties: {
           title: {
             title: [
