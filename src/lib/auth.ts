@@ -59,6 +59,44 @@ function buildCookie(name: string, value: string, maxAgeSeconds: number): string
   return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
 }
 
+export function createSignedPayload<T>(secret: string, payload: T, ttlMs = 1000 * 60 * 15): string {
+  const encoded = Buffer.from(
+    JSON.stringify({
+      expiresAt: Date.now() + ttlMs,
+      payload,
+    }),
+    "utf8",
+  ).toString("base64url");
+
+  return `${encoded}.${sign(secret, encoded)}`;
+}
+
+export function verifySignedPayload<T>(secret: string, rawValue: string | undefined): T | null {
+  if (!rawValue) {
+    return null;
+  }
+
+  const [encoded, signature] = rawValue.split(".");
+  if (!encoded || !signature || sign(secret, encoded) !== signature) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as {
+      expiresAt?: unknown;
+      payload?: T;
+    };
+
+    if (typeof parsed.expiresAt !== "number" || parsed.expiresAt < Date.now()) {
+      return null;
+    }
+
+    return parsed.payload ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function setAdminSessionCookie(res: Response, secret: string): void {
   const value = createAdminSessionValue(secret);
   res.setHeader("Set-Cookie", buildCookie(adminCookieName, value, 60 * 60 * 24 * 14));

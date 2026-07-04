@@ -37,6 +37,9 @@ Variables mínimas:
 - `ADMIN_SESSION_SECRET=<secreto largo>`
 - `WORDPRESS_REGISTRY_TOKEN=<token del plugin/bridge>`
 - `HUB_STATE_FILE=/app/data/hub-state.json`
+- `NOTION_OAUTH_CLIENT_ID=<client id de la integracion publica>`
+- `NOTION_OAUTH_CLIENT_SECRET=<client secret de la integracion publica>`
+- `NOTION_OAUTH_REDIRECT_URI=https://mcp.criu.com.co/api/admin/connectors/notion/oauth/callback`
 
 Persistencia:
 
@@ -75,10 +78,10 @@ Desde `/admin`:
 
 1. crear `alias`
 2. poner `label`
-3. pegar `token`
-4. definir `defaultParentPageId` si quieres un parent por defecto
-5. guardar
-6. pulsar `Validar`
+3. definir `defaultParentPageId` si quieres un parent por defecto
+4. pulsar `Conectar con Notion`
+5. aprobar la autorizacion en Notion
+6. volver al panel y pulsar `Validar`
 
 Resultado esperado:
 

@@ -25,6 +25,9 @@ const envSchema = z.object({
   WORDPRESS_REGISTRY_TOKEN: z.string().optional(),
   WORDPRESS_BOOTSTRAP_SITES_FILE: z.string().optional(),
   NOTION_CONNECTIONS_JSON: z.string().default("[]"),
+  NOTION_OAUTH_CLIENT_ID: z.string().optional(),
+  NOTION_OAUTH_CLIENT_SECRET: z.string().optional(),
+  NOTION_OAUTH_REDIRECT_URI: z.string().url().optional(),
 });
 
 export type BootstrapNotionConnection = z.infer<typeof bootstrapNotionSchema>;
@@ -42,6 +45,12 @@ export type AppConfig = {
   wordPressRegistryToken: string;
   bootstrapNotionConnections: BootstrapNotionConnection[];
   wordPressBootstrapSitesFile?: string;
+  notionOAuth: {
+    enabled: boolean;
+    clientId?: string;
+    clientSecret?: string;
+    redirectUri?: string;
+  };
 };
 
 function parseBootstrapNotionConnections(rawJson: string): BootstrapNotionConnection[] {
@@ -90,5 +99,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     wordPressBootstrapSitesFile: parsed.WORDPRESS_BOOTSTRAP_SITES_FILE
       ? path.resolve(parsed.WORDPRESS_BOOTSTRAP_SITES_FILE)
       : undefined,
+    notionOAuth: {
+      enabled: Boolean(
+        parsed.NOTION_OAUTH_CLIENT_ID && parsed.NOTION_OAUTH_CLIENT_SECRET && parsed.NOTION_OAUTH_REDIRECT_URI,
+      ),
+      clientId: parsed.NOTION_OAUTH_CLIENT_ID,
+      clientSecret: parsed.NOTION_OAUTH_CLIENT_SECRET,
+      redirectUri: parsed.NOTION_OAUTH_REDIRECT_URI,
+    },
   };
 }

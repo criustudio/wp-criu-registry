@@ -46,6 +46,9 @@ Bootstrap opcional:
 
 - `NOTION_CONNECTIONS_JSON`
 - `WORDPRESS_BOOTSTRAP_SITES_FILE`
+- `NOTION_OAUTH_CLIENT_ID`
+- `NOTION_OAUTH_CLIENT_SECRET`
+- `NOTION_OAUTH_REDIRECT_URI`
 
 ## Rutas principales
 
@@ -60,7 +63,8 @@ Bootstrap opcional:
 
 El panel permite:
 
-- crear y editar conexiones Notion;
+- iniciar autorizaciones de Notion por OAuth;
+- almacenar y editar conexiones Notion ya autorizadas;
 - validarlas con `whoami`;
 - registrar sitios WordPress a mano;
 - ver estado de bridge;
@@ -104,9 +108,21 @@ http://localhost:3000/admin
 3. Configura `MCP_AUTH_MODE=bearer` y un `MCP_API_KEY` privado.
 4. Configura `MCP_ALLOWED_HOSTS` con tu dominio publico y localhost.
 5. Configura `ADMIN_API_KEY`, `ADMIN_SESSION_SECRET` y `WORDPRESS_REGISTRY_TOKEN`.
-6. Si vienes del `wp_criu_registry` actual, monta el mismo volumen y deja `WORDPRESS_BOOTSTRAP_SITES_FILE=/app/data/sites.json`.
-7. Publica el servicio por HTTPS.
-8. Usa `/mcp` para MCP y `/admin` para onboarding humano.
+6. Si vas a conectar Notion desde el panel, configura `NOTION_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_SECRET` y `NOTION_OAUTH_REDIRECT_URI=https://tu-dominio/api/admin/connectors/notion/oauth/callback`.
+7. Si vienes del `wp_criu_registry` actual, monta el mismo volumen y deja `WORDPRESS_BOOTSTRAP_SITES_FILE=/app/data/sites.json`.
+8. Publica el servicio por HTTPS.
+9. Usa `/mcp` para MCP y `/admin` para onboarding humano.
+
+## Onboarding de Notion
+
+1. Crea una integración pública de Notion y define como redirect URI:
+   - `https://tu-dominio/api/admin/connectors/notion/oauth/callback`
+2. Carga `NOTION_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_SECRET` y `NOTION_OAUTH_REDIRECT_URI` en EasyPanel.
+3. Entra a `/admin`.
+4. Escribe `alias`, `label` opcional y `defaultParentPageId` opcional.
+5. Pulsa `Conectar con Notion`.
+6. Autoriza la integración en Notion.
+7. Vuelve al panel y valida con `whoami`.
 
 ## Migración directa desde el registry actual
 

@@ -24,6 +24,24 @@ const notionBootstrapSchema = z.object({
   notionVersion: z.string().min(1).optional(),
 });
 
+const notionOauthSchema = z.object({
+  alias: z.string().min(1),
+  label: z.string().min(1).optional(),
+  token: z.string().min(1),
+  refreshToken: z.string().min(1).nullable().optional(),
+  defaultParentPageId: z.string().min(1).optional(),
+  notionVersion: z.string().min(1).optional(),
+  workspaceId: z.string().min(1),
+  workspaceName: z.string().nullable().optional(),
+  workspaceIcon: z.string().nullable().optional(),
+  botId: z.string().min(1),
+  ownerType: z.enum(["user", "workspace"]).optional(),
+  ownerUserId: z.string().nullable().optional(),
+  ownerUserName: z.string().nullable().optional(),
+  ownerUserEmail: z.string().nullable().optional(),
+  status: z.enum(["enabled", "disabled"]).optional(),
+});
+
 const wordPressSiteInputSchema = z.object({
   site_id: z.string().min(1),
   site_label: z.string().min(1),
@@ -105,13 +123,18 @@ function extractBootstrapSites(input: unknown): unknown[] {
   return [];
 }
 
-function buildNotionConnector(config: NotionConnectorConfig, label?: string, status: ConnectorStatus = "enabled"): NotionConnectorRecord {
+function buildNotionConnector(
+  config: NotionConnectorConfig,
+  label?: string,
+  status: ConnectorStatus = "enabled",
+  authMode: NotionConnectorRecord["auth_mode"] = "token",
+): NotionConnectorRecord {
   return {
     connector_id: `notion:${config.alias}`,
     kind: "notion",
-    label: label ?? config.alias,
+    label: label ?? config.workspaceName ?? config.alias,
     status,
-    auth_mode: "token",
+    auth_mode: authMode,
     capabilities: ["mcp", "search", "pages", "admin", "validation"],
     config,
     entities: [],
@@ -239,9 +262,19 @@ export class StateStore {
               token: rawConfig.token,
               defaultParentPageId: rawConfig.defaultParentPageId,
               notionVersion: rawConfig.notionVersion,
+              refreshToken: rawConfig.refreshToken,
+              workspaceId: rawConfig.workspaceId,
+              workspaceName: rawConfig.workspaceName,
+              workspaceIcon: rawConfig.workspaceIcon,
+              botId: rawConfig.botId,
+              ownerType: rawConfig.ownerType,
+              ownerUserId: rawConfig.ownerUserId,
+              ownerUserName: rawConfig.ownerUserName,
+              ownerUserEmail: rawConfig.ownerUserEmail,
             },
             connector.label,
             connector.status === "disabled" ? "disabled" : "enabled",
+            connector.auth_mode === "oauth" ? "oauth" : "token",
           ),
         );
       }
@@ -427,13 +460,79 @@ export class StateStore {
     return structuredClone(record);
   }
 
+  upsertNotionOAuthConnection(input: {
+    alias: string;
+    label?: string;
+    token: string;
+    refreshToken?: string | null;
+    defaultParentPageId?: string;
+    notionVersion?: string;
+    workspaceId: string;
+    workspaceName?: string | null;
+    workspaceIcon?: string | null;
+    botId: string;
+    ownerType?: "user" | "workspace";
+    ownerUserId?: string | null;
+    ownerUserName?: string | null;
+    ownerUserEmail?: string | null;
+    status?: ConnectorStatus;
+  }): NotionConnectorRecord {
+    const parsed = notionOauthSchema.parse(input);
+    const connectorId = `notion:${parsed.alias}`;
+    const record = buildNotionConnector(
+      {
+        alias: parsed.alias.trim(),
+        token: parsed.token.trim(),
+        refreshToken: parsed.refreshToken?.trim() || undefined,
+        defaultParentPageId: parsed.defaultParentPageId?.trim() || undefined,
+        notionVersion: parsed.notionVersion?.trim() || undefined,
+        workspaceId: parsed.workspaceId.trim(),
+        workspaceName: parsed.workspaceName?.trim() || undefined,
+        workspaceIcon: parsed.workspaceIcon?.trim() || undefined,
+        botId: parsed.botId.trim(),
+        ownerType: parsed.ownerType,
+        ownerUserId: parsed.ownerUserId?.trim() || undefined,
+        ownerUserName: parsed.ownerUserName?.trim() || undefined,
+        ownerUserEmail: parsed.ownerUserEmail?.trim() || undefined,
+      },
+      parsed.label?.trim() || parsed.workspaceName?.trim() || undefined,
+      parsed.status ?? "enabled",
+      "oauth",
+    );
+
+    const index = this.findConnectorIndex(connectorId);
+    if (index >= 0) {
+      const existing = this.state.connectors[index];
+      if (existing.kind !== "notion") {
+        throw new Error(`Connector ${connectorId} is not a Notion connector.`);
+      }
+      record.last_check_at = existing.last_check_at;
+      record.last_error = existing.last_error ?? null;
+      this.state.connectors[index] = record;
+    } else {
+      this.state.connectors.push(record);
+    }
+
+    this.persist();
+    return structuredClone(record);
+  }
+
   patchNotionConnection(
     alias: string,
     patch: Partial<{
       label: string;
       token: string;
+      refreshToken: string | null;
       defaultParentPageId: string | null;
       notionVersion: string | null;
+      workspaceId: string | null;
+      workspaceName: string | null;
+      workspaceIcon: string | null;
+      botId: string | null;
+      ownerType: "user" | "workspace" | null;
+      ownerUserId: string | null;
+      ownerUserName: string | null;
+      ownerUserEmail: string | null;
       status: ConnectorStatus;
       last_error: string | null;
       last_check_at: string | null;
@@ -453,10 +552,25 @@ export class StateStore {
     existing.label = patch.label?.trim() || existing.label;
     existing.status = patch.status ?? existing.status;
     existing.config.token = patch.token?.trim() || existing.config.token;
+    existing.config.refreshToken =
+      patch.refreshToken === null ? undefined : patch.refreshToken?.trim() || existing.config.refreshToken;
     existing.config.defaultParentPageId =
       patch.defaultParentPageId === null ? undefined : patch.defaultParentPageId?.trim() || existing.config.defaultParentPageId;
     existing.config.notionVersion =
       patch.notionVersion === null ? undefined : patch.notionVersion?.trim() || existing.config.notionVersion;
+    existing.config.workspaceId = patch.workspaceId === null ? undefined : patch.workspaceId?.trim() || existing.config.workspaceId;
+    existing.config.workspaceName =
+      patch.workspaceName === null ? undefined : patch.workspaceName?.trim() || existing.config.workspaceName;
+    existing.config.workspaceIcon =
+      patch.workspaceIcon === null ? undefined : patch.workspaceIcon?.trim() || existing.config.workspaceIcon;
+    existing.config.botId = patch.botId === null ? undefined : patch.botId?.trim() || existing.config.botId;
+    existing.config.ownerType = patch.ownerType === null ? undefined : patch.ownerType ?? existing.config.ownerType;
+    existing.config.ownerUserId =
+      patch.ownerUserId === null ? undefined : patch.ownerUserId?.trim() || existing.config.ownerUserId;
+    existing.config.ownerUserName =
+      patch.ownerUserName === null ? undefined : patch.ownerUserName?.trim() || existing.config.ownerUserName;
+    existing.config.ownerUserEmail =
+      patch.ownerUserEmail === null ? undefined : patch.ownerUserEmail?.trim() || existing.config.ownerUserEmail;
     if (patch.last_error !== undefined) {
       existing.last_error = patch.last_error;
     }

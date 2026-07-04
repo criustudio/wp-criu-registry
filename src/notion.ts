@@ -28,6 +28,14 @@ export type SearchResultItem = {
   lastEditedTime?: string;
 };
 
+type NotionHubOptions = {
+  oauth?: {
+    clientId: string;
+    clientSecret: string;
+  };
+  onTokenRefresh?: (connection: NotionConnectorRecord) => Promise<NotionConnectorRecord> | NotionConnectorRecord;
+};
+
 function richTextToPlainText(items: Array<{ plain_text?: string }> | undefined): string {
   return (items ?? []).map((item) => item.plain_text ?? "").join("").trim();
 }
@@ -84,9 +92,10 @@ function normalizeNotionError(error: unknown): string {
 
 export class NotionHub {
   private readonly clients = new Map<string, Client>();
+  private readonly records = new Map<string, NotionConnectorRecord>();
   private readonly summaries: NotionConnectionSummary[];
 
-  constructor(connections: NotionConnectorRecord[]) {
+  constructor(connections: NotionConnectorRecord[], private readonly options?: NotionHubOptions) {
     this.summaries = connections.map((connection) => ({
       connector_id: connection.connector_id,
       alias: connection.config.alias,
@@ -96,13 +105,8 @@ export class NotionHub {
     }));
 
     for (const connection of connections) {
-      this.clients.set(
-        connection.config.alias,
-        new Client({
-          auth: connection.config.token,
-          notionVersion: connection.config.notionVersion,
-        }),
-      );
+      this.records.set(connection.config.alias, structuredClone(connection));
+      this.clients.set(connection.config.alias, this.createClient(connection));
     }
   }
 
@@ -118,6 +122,21 @@ export class NotionHub {
     return client;
   }
 
+  private getRecord(alias: string): NotionConnectorRecord {
+    const connection = this.records.get(alias);
+    if (!connection) {
+      throw new Error(`Unknown Notion workspace alias: ${alias}`);
+    }
+    return connection;
+  }
+
+  private createClient(connection: NotionConnectorRecord): Client {
+    return new Client({
+      auth: connection.config.token,
+      notionVersion: connection.config.notionVersion,
+    });
+  }
+
   private getConnection(alias: string): NotionConnectionSummary {
     const connection = this.summaries.find((item) => item.alias === alias);
     if (!connection) {
@@ -126,20 +145,87 @@ export class NotionHub {
     return connection;
   }
 
-  async whoAmI(alias: string) {
+  private async refreshConnection(alias: string): Promise<NotionConnectorRecord | null> {
+    const connection = this.getRecord(alias);
+    if (
+      connection.auth_mode !== "oauth" ||
+      !connection.config.refreshToken ||
+      !this.options?.oauth?.clientId ||
+      !this.options?.oauth?.clientSecret ||
+      !this.options?.onTokenRefresh
+    ) {
+      return null;
+    }
+
+    const notion = new Client();
+    const refreshed = await notion.oauth.token({
+      client_id: this.options.oauth.clientId,
+      client_secret: this.options.oauth.clientSecret,
+      grant_type: "refresh_token",
+      refresh_token: connection.config.refreshToken,
+    });
+
+    const nextRecord = await this.options.onTokenRefresh({
+      ...connection,
+      auth_mode: "oauth",
+      label: connection.label,
+      config: {
+        ...connection.config,
+        token: refreshed.access_token,
+        refreshToken: refreshed.refresh_token ?? connection.config.refreshToken,
+        workspaceId: refreshed.workspace_id,
+        workspaceName: refreshed.workspace_name ?? connection.config.workspaceName,
+        workspaceIcon: refreshed.workspace_icon ?? connection.config.workspaceIcon,
+        botId: refreshed.bot_id,
+        ownerType: refreshed.owner.type,
+        ownerUserId:
+          refreshed.owner.type === "user" && "id" in refreshed.owner.user ? refreshed.owner.user.id : connection.config.ownerUserId,
+        ownerUserName:
+          refreshed.owner.type === "user" && "name" in refreshed.owner.user
+            ? refreshed.owner.user.name ?? undefined
+            : connection.config.ownerUserName,
+        ownerUserEmail:
+          refreshed.owner.type === "user" && "person" in refreshed.owner.user
+            ? refreshed.owner.user.person?.email ?? undefined
+            : connection.config.ownerUserEmail,
+      },
+    });
+
+    this.records.set(alias, structuredClone(nextRecord));
+    this.clients.set(alias, this.createClient(nextRecord));
+    return nextRecord;
+  }
+
+  private async runWithClient<T>(alias: string, task: (client: Client, connection: NotionConnectionSummary) => Promise<T>): Promise<T> {
+    const client = this.getClient(alias);
+    const connection = this.getConnection(alias);
+
     try {
-      const bot = await this.getClient(alias).users.me({});
-      return {
-        workspace: this.getConnection(alias),
-        bot,
-      };
+      return await task(client, connection);
     } catch (error) {
+      if (isNotionClientError(error) && error.code === APIErrorCode.Unauthorized) {
+        const refreshed = await this.refreshConnection(alias);
+        if (refreshed) {
+          return task(this.getClient(alias), connection);
+        }
+      }
+
       throw new Error(normalizeNotionError(error));
     }
   }
 
+  async whoAmI(alias: string) {
+    return this.runWithClient(alias, async (client, connection) => {
+      const bot = await client.users.me({});
+      return {
+        workspace: connection,
+        bot,
+      };
+    });
+  }
+
   async search(alias: string, input: { query?: string; object: SearchObject; limit: number; startCursor?: string }) {
-    try {
+    return this.runWithClient(alias, async (client, connection) => {
       const filter =
         input.object === "all"
           ? undefined
@@ -148,7 +234,7 @@ export class NotionHub {
               value: input.object,
             };
 
-      const response: SearchResponse = await this.getClient(alias).search({
+      const response: SearchResponse = await client.search({
         query: input.query,
         page_size: input.limit,
         start_cursor: input.startCursor,
@@ -169,52 +255,45 @@ export class NotionHub {
       }));
 
       return {
-        workspace: this.getConnection(alias),
+        workspace: connection,
         nextCursor: response.next_cursor,
         hasMore: response.has_more,
         results,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 
   async getPage(alias: string, pageId: string) {
-    try {
-      const page = await this.getClient(alias).pages.retrieve({ page_id: pageId });
+    return this.runWithClient(alias, async (client, connection) => {
+      const page = await client.pages.retrieve({ page_id: pageId });
       return {
-        workspace: this.getConnection(alias),
+        workspace: connection,
         title: extractPageTitle(page),
         page,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 
   async getPageMarkdown(alias: string, pageId: string) {
-    try {
-      const response = await this.getClient(alias).pages.retrieveMarkdown({ page_id: pageId });
+    return this.runWithClient(alias, async (client, connection) => {
+      const response = await client.pages.retrieveMarkdown({ page_id: pageId });
       return {
-        workspace: this.getConnection(alias),
+        workspace: connection,
         pageId,
         markdown: response.markdown,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 
   async createPage(alias: string, input: { title: string; markdown?: string; parentPageId?: string }) {
-    try {
-      const connection = this.getConnection(alias);
+    return this.runWithClient(alias, async (client, connection) => {
       const parentPageId = input.parentPageId ?? connection.defaultParentPageId;
 
       if (!parentPageId) {
         throw new Error(`Workspace ${alias} does not have a defaultParentPageId configured and parentPageId was not provided.`);
       }
 
-      const response = await this.getClient(alias).pages.create({
+      const response = await client.pages.create({
         parent: {
           page_id: parentPageId,
         },
@@ -237,14 +316,12 @@ export class NotionHub {
         workspace: connection,
         page: response,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 
   async appendMarkdown(alias: string, input: { pageId: string; markdown: string; afterBlockId?: string }) {
-    try {
-      const response = await this.getClient(alias).pages.updateMarkdown({
+    return this.runWithClient(alias, async (client, connection) => {
+      const response = await client.pages.updateMarkdown({
         page_id: input.pageId,
         type: "insert_content",
         insert_content: {
@@ -255,18 +332,16 @@ export class NotionHub {
       });
 
       return {
-        workspace: this.getConnection(alias),
+        workspace: connection,
         pageId: input.pageId,
         markdown: response.markdown,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 
   async replaceMarkdown(alias: string, input: { pageId: string; markdown: string; allowDeletingContent: boolean }) {
-    try {
-      const response = await this.getClient(alias).pages.updateMarkdown({
+    return this.runWithClient(alias, async (client, connection) => {
+      const response = await client.pages.updateMarkdown({
         page_id: input.pageId,
         type: "replace_content",
         replace_content: {
@@ -276,18 +351,15 @@ export class NotionHub {
       });
 
       return {
-        workspace: this.getConnection(alias),
+        workspace: connection,
         pageId: input.pageId,
         markdown: response.markdown,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 
   async updateTitle(alias: string, input: { pageId: string; title: string }) {
-    try {
-      const client = this.getClient(alias);
+    return this.runWithClient(alias, async (client, connection) => {
       const page = await client.pages.retrieve({ page_id: input.pageId });
 
       if (!isFullPage(page)) {
@@ -317,17 +389,15 @@ export class NotionHub {
       });
 
       return {
-        workspace: this.getConnection(alias),
+        workspace: connection,
         page: response,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 
   async movePage(alias: string, input: { pageId: string; parentPageId: string }) {
-    try {
-      const response = await this.getClient(alias).pages.move({
+    return this.runWithClient(alias, async (client, connection) => {
+      const response = await client.pages.move({
         page_id: input.pageId,
         parent: {
           page_id: input.parentPageId,
@@ -335,27 +405,23 @@ export class NotionHub {
       });
 
       return {
-        workspace: this.getConnection(alias),
+        workspace: connection,
         page: response,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 
   async archivePage(alias: string, input: { pageId: string; inTrash: boolean }) {
-    try {
-      const response = await this.getClient(alias).pages.update({
+    return this.runWithClient(alias, async (client, connection) => {
+      const response = await client.pages.update({
         page_id: input.pageId,
         in_trash: input.inTrash,
       });
 
       return {
-        workspace: this.getConnection(alias),
+        workspace: connection,
         page: response,
       };
-    } catch (error) {
-      throw new Error(normalizeNotionError(error));
-    }
+    });
   }
 }

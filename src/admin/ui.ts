@@ -296,15 +296,15 @@ export function renderAdminPage(): string {
 
         <section id="notion-section" class="stack">
           <h2>Alta Notion</h2>
+          <div id="notion-oauth-status" class="message"></div>
           <div class="stack">
             <label class="stack"><span>Alias</span><input id="notion-alias" /></label>
             <label class="stack"><span>Label</span><input id="notion-label" /></label>
-            <label class="stack"><span>Token</span><input id="notion-token" type="password" /></label>
             <label class="stack"><span>Default Parent Page ID</span><input id="notion-parent" /></label>
             <label class="stack"><span>Notion Version</span><input id="notion-version" placeholder="2025-09-03" /></label>
           </div>
           <div class="form-actions">
-            <button id="save-notion" class="primary">Guardar conexión Notion</button>
+            <button id="connect-notion" class="primary">Conectar con Notion</button>
           </div>
           <div class="stack panel-scroll">
             <h3>Workspaces Notion</h3>
@@ -360,6 +360,7 @@ export function renderAdminPage(): string {
         authenticated: false,
         connectors: [],
         catalog: [],
+        notionOAuth: { enabled: false, redirect_uri: "" },
       };
 
       const loginShell = document.getElementById("login-shell");
@@ -423,7 +424,7 @@ export function renderAdminPage(): string {
         container.innerHTML = state.connectors.map((connector) => {
           const summary = connector.kind === "wordpress"
             ? 'Sites: ' + (connector.entities?.length || 0)
-            : 'Alias: ' + connector.config.alias;
+            : 'Alias: ' + connector.config.alias + (connector.config.workspaceName ? ' · ' + connector.config.workspaceName : '');
           const error = connector.last_error ? '<div class="message">' + connector.last_error + '</div>' : "";
           return '<div class="stack" style="border:1px solid var(--line);border-radius:12px;padding:12px;">'
             + '<div class="row" style="justify-content:space-between"><strong>' + connector.label + '</strong><span class="pill">' + connector.kind + '</span></div>'
@@ -437,13 +438,15 @@ export function renderAdminPage(): string {
       function renderNotionTable() {
         const notionConnectors = state.connectors.filter((connector) => connector.kind === "notion");
         const html = notionConnectors.length
-          ? '<table><thead><tr><th>Alias</th><th>Estado</th><th>Parent</th><th>Último check</th><th>Acciones</th></tr></thead><tbody>'
+          ? '<table><thead><tr><th>Alias</th><th>Estado</th><th>Workspace</th><th>Parent</th><th>Último check</th><th>Acciones</th></tr></thead><tbody>'
             + notionConnectors.map((connector) => {
               const lastCheck = connector.last_check_at || "Nunca";
               const parent = connector.config.defaultParentPageId || "-";
+              const workspace = connector.config.workspaceName || connector.config.workspaceId || "-";
               return '<tr>'
                 + '<td><strong>' + connector.config.alias + '</strong><br><span class="subtle">' + connector.label + '</span></td>'
-                + '<td>' + connector.status + (connector.last_error ? '<br><span class="subtle">' + connector.last_error + '</span>' : '') + '</td>'
+                + '<td>' + connector.status + '<br><span class="subtle">' + connector.auth_mode + '</span>' + (connector.last_error ? '<br><span class="subtle">' + connector.last_error + '</span>' : '') + '</td>'
+                + '<td>' + workspace + '</td>'
                 + '<td><code>' + parent + '</code></td>'
                 + '<td>' + lastCheck + '</td>'
                 + '<td class="actions">'
@@ -519,9 +522,19 @@ export function renderAdminPage(): string {
           '<div class="stack" style="border:1px solid var(--line);border-radius:12px;padding:12px">'
             + '<h3>Notion workspaces</h3>'
             + '<pre>' + (notionAliases.length ? notionAliases.join("\\n") : "Todavía no hay aliases dados de alta.") + '</pre>'
-            + '<p class="subtle">Cada alias nuevo queda usable por MCP apenas guardas la conexión y validas con <code>whoami</code>.</p>'
+            + '<p class="subtle">Cada alias nuevo queda usable por MCP apenas autorizas la app de Notion y validas con <code>whoami</code>.</p>'
           + '</div>',
         ].join("");
+      }
+
+      function renderNotionOauthStatus() {
+        const container = document.getElementById("notion-oauth-status");
+        if (!state.notionOAuth.enabled) {
+          container.textContent = "Notion OAuth no esta configurado todavia en el servidor. Debes cargar client_id, client_secret y redirect_uri en EasyPanel.";
+          return;
+        }
+
+        container.textContent = "Conexion por autorizacion Notion activa. Redirect URI actual: " + (state.notionOAuth.redirect_uri || "(sin redirect_uri)");
       }
 
       function render() {
@@ -530,6 +543,7 @@ export function renderAdminPage(): string {
         if (!state.authenticated) return;
         renderMetrics();
         renderConnectorOverview();
+        renderNotionOauthStatus();
         renderNotionTable();
         renderWordPressTable();
         renderCatalog();
@@ -540,7 +554,26 @@ export function renderAdminPage(): string {
         const payload = await api("/api/admin/connectors");
         state.connectors = payload.connectors;
         state.catalog = payload.catalog;
+        state.notionOAuth = payload.notion_oauth || { enabled: false, redirect_uri: "" };
         render();
+      }
+
+      function applyOauthResultMessage() {
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get("notion_oauth");
+        if (!status) return;
+
+        if (status === "success") {
+          showMessage(globalMessage, "Conexion Notion autorizada para alias: " + (params.get("alias") || "(sin alias)"));
+        } else {
+          showMessage(globalMessage, params.get("error") || "No se pudo completar la autorizacion de Notion.");
+        }
+
+        params.delete("notion_oauth");
+        params.delete("alias");
+        params.delete("error");
+        const next = params.toString();
+        window.history.replaceState({}, "", window.location.pathname + (next ? "?" + next : ""));
       }
 
       async function refreshSession() {
@@ -584,22 +617,16 @@ export function renderAdminPage(): string {
         }
       });
 
-      document.getElementById("save-notion").addEventListener("click", async () => {
-        try {
-          await api("/api/admin/connectors/notion", {
-            method: "POST",
-            body: {
-              alias: document.getElementById("notion-alias").value,
-              label: document.getElementById("notion-label").value,
-              token: document.getElementById("notion-token").value,
-              defaultParentPageId: document.getElementById("notion-parent").value || undefined,
-              notionVersion: document.getElementById("notion-version").value || undefined,
-            },
-          });
-          await loadOverview();
-        } catch (error) {
-          showMessage(globalMessage, error.message);
-        }
+      document.getElementById("connect-notion").addEventListener("click", () => {
+        const alias = document.getElementById("notion-alias").value;
+        const label = document.getElementById("notion-label").value;
+        const defaultParentPageId = document.getElementById("notion-parent").value;
+        const notionVersion = document.getElementById("notion-version").value;
+        const params = new URLSearchParams({ alias });
+        if (label) params.set("label", label);
+        if (defaultParentPageId) params.set("defaultParentPageId", defaultParentPageId);
+        if (notionVersion) params.set("notionVersion", notionVersion);
+        window.location.href = "/api/admin/connectors/notion/oauth/start?" + params.toString();
       });
 
       document.getElementById("save-wordpress").addEventListener("click", async () => {
@@ -713,6 +740,7 @@ export function renderAdminPage(): string {
         showMessage(loginMessage, error.message);
         loginShell.classList.remove("hidden");
       });
+      applyOauthResultMessage();
     </script>
   </body>
 </html>`;

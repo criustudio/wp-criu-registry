@@ -8,6 +8,15 @@ export type NotionConnectorConfig = {
   token: string;
   defaultParentPageId?: string;
   notionVersion?: string;
+  refreshToken?: string;
+  workspaceId?: string;
+  workspaceName?: string;
+  workspaceIcon?: string;
+  botId?: string;
+  ownerType?: "user" | "workspace";
+  ownerUserId?: string;
+  ownerUserName?: string;
+  ownerUserEmail?: string;
 };
 
 export type NotionConnectorRecord = {
@@ -15,7 +24,7 @@ export type NotionConnectorRecord = {
   kind: "notion";
   label: string;
   status: ConnectorStatus;
-  auth_mode: "token";
+  auth_mode: "token" | "oauth";
   capabilities: string[];
   config: NotionConnectorConfig;
   entities: [];

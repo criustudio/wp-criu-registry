@@ -5,13 +5,15 @@ export const connectorCatalog: ConnectorCatalogEntry[] = [
     kind: "notion",
     label: "Notion",
     status: "implemented",
-    description: "Conector por token para varios workspaces, operado por alias y editable desde el panel.",
+    description: "Conector OAuth para varios workspaces, operado por alias y editable desde el panel.",
     config_schema: {
       alias: "string",
       label: "string",
-      token: "string",
       defaultParentPageId: "string?",
       notionVersion: "string?",
+      workspaceId: "string?",
+      workspaceName: "string?",
+      refreshToken: "string?",
       status: "enabled|disabled",
     },
     entity_schema: {
@@ -20,8 +22,9 @@ export const connectorCatalog: ConnectorCatalogEntry[] = [
     },
     onboarding_steps: [
       "Crear alias tecnico",
-      "Pegar token de integracion",
+      "Lanzar autorizacion OAuth",
       "Definir parent por defecto opcional",
+      "Aprobar acceso en Notion",
       "Validar con whoami",
       "Habilitar para MCP",
     ],

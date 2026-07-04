@@ -17,7 +17,28 @@ const store = new StateStore(config);
 const wordPressHub = new WordPressHub(store);
 
 function getNotionHub(options?: { includeDisabled?: boolean }) {
-  return new NotionHub(store.getNotionConnectors({ includeDisabled: options?.includeDisabled }));
+  return new NotionHub(store.getNotionConnectors({ includeDisabled: options?.includeDisabled }), {
+    oauth: config.notionOAuth.enabled && config.notionOAuth.clientId && config.notionOAuth.clientSecret
+      ? {
+          clientId: config.notionOAuth.clientId,
+          clientSecret: config.notionOAuth.clientSecret,
+        }
+      : undefined,
+    onTokenRefresh: (connection) =>
+      store.patchNotionConnection(connection.config.alias, {
+        token: connection.config.token,
+        refreshToken: connection.config.refreshToken ?? null,
+        workspaceId: connection.config.workspaceId ?? null,
+        workspaceName: connection.config.workspaceName ?? null,
+        workspaceIcon: connection.config.workspaceIcon ?? null,
+        botId: connection.config.botId ?? null,
+        ownerType: connection.config.ownerType ?? null,
+        ownerUserId: connection.config.ownerUserId ?? null,
+        ownerUserName: connection.config.ownerUserName ?? null,
+        ownerUserEmail: connection.config.ownerUserEmail ?? null,
+        last_error: null,
+      }),
+  });
 }
 
 function authMiddleware(req: Request, res: Response, next: NextFunction) {

@@ -67,10 +67,10 @@ Luego:
 
 1. inicia sesión con `ADMIN_API_KEY`
 2. crea un alias técnico
-3. pega el token de integración de Notion
-4. opcionalmente define `defaultParentPageId`
-5. pulsa guardar
-6. pulsa validar
+3. opcionalmente define `defaultParentPageId`
+4. pulsa `Conectar con Notion`
+5. autoriza la integración en Notion
+6. vuelve al panel y pulsa validar
 
 Efecto esperado:
 
@@ -102,12 +102,16 @@ Si la plataforma no tiene API ni bridge viable, no vale la pena forzarla dentro 
 
 ## 9. Qué falta para tener Notion realmente operativo
 
-La base ya está lista, pero hace falta cargar tus tokens reales de Notion desde `/admin`.
+La base ya está lista, pero hace falta configurar la integración pública de Notion en EasyPanel:
+
+- `NOTION_OAUTH_CLIENT_ID`
+- `NOTION_OAUTH_CLIENT_SECRET`
+- `NOTION_OAUTH_REDIRECT_URI=https://mcp.criu.com.co/api/admin/connectors/notion/oauth/callback`
 
 Sin eso:
 
 - el conector existe como capacidad
-- el onboarding funciona
+- el panel muestra el flujo
 - pero no hay workspaces reales activos todavía
 
 ## 10. Verificaciones rápidas útiles

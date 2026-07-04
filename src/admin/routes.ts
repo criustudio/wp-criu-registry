@@ -1,7 +1,14 @@
+import { Client } from "@notionhq/client";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod/v4";
 import type { AppConfig } from "../config.js";
-import { clearAdminSessionCookie, hasAdminSession, setAdminSessionCookie } from "../lib/auth.js";
+import {
+  clearAdminSessionCookie,
+  createSignedPayload,
+  hasAdminSession,
+  setAdminSessionCookie,
+  verifySignedPayload,
+} from "../lib/auth.js";
 import { connectorCatalog } from "../lib/catalog.js";
 import type { StateStore } from "../lib/state.js";
 import type { NotionHub } from "../notion.js";
@@ -26,6 +33,23 @@ const notionPatchSchema = z.object({
   defaultParentPageId: z.string().min(1).nullable().optional(),
   notionVersion: z.string().min(1).nullable().optional(),
   status: z.enum(["enabled", "disabled"]).optional(),
+});
+
+const notionOauthStartSchema = z.object({
+  alias: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9_-]+$/i, "El alias solo puede contener letras, numeros, guion y guion bajo."),
+  label: z.string().min(1).optional(),
+  defaultParentPageId: z.string().min(1).optional(),
+  notionVersion: z.string().min(1).optional(),
+});
+
+const notionOauthStateSchema = z.object({
+  alias: z.string().min(1),
+  label: z.string().min(1).optional(),
+  defaultParentPageId: z.string().min(1).optional(),
+  notionVersion: z.string().min(1).optional(),
 });
 
 const wordPressPatchSchema = z.object({
@@ -56,6 +80,23 @@ function toResponseError(res: Response, error: unknown, status = 400): void {
   });
 }
 
+function buildAdminRedirect(config: AppConfig, params: Record<string, string | undefined>): string {
+  const base = config.notionOAuth.redirectUri ? new URL("/admin", config.notionOAuth.redirectUri).toString() : "/admin";
+  const url = new URL(base, "http://localhost");
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  if (base.startsWith("http://") || base.startsWith("https://")) {
+    return `${base.split("?")[0]}?${url.searchParams.toString()}`;
+  }
+
+  return `${url.pathname}?${url.searchParams.toString()}`;
+}
+
 export function registerAdminRoutes(app: Express, services: {
   config: AppConfig;
   store: StateStore;
@@ -73,6 +114,77 @@ export function registerAdminRoutes(app: Express, services: {
       ok: true,
       authenticated: hasAdminSession(req, services.config.adminSessionSecret),
     });
+  });
+
+  app.get("/api/admin/connectors/notion/oauth/callback", async (req, res) => {
+    try {
+      if (!services.config.notionOAuth.enabled || !services.config.notionOAuth.clientId || !services.config.notionOAuth.clientSecret) {
+        res.redirect(
+          buildAdminRedirect(services.config, {
+            notion_oauth: "error",
+            error: "Notion OAuth no esta configurado en el servidor.",
+          }),
+        );
+        return;
+      }
+
+      const code = z.string().min(1).parse(req.query.code);
+      const stateToken = z.string().min(1).parse(req.query.state);
+      const state = verifySignedPayload(services.config.adminSessionSecret, stateToken);
+      const parsedState = notionOauthStateSchema.safeParse(state);
+      if (!parsedState.success) {
+        throw new Error("El estado OAuth de Notion es invalido o ya vencio.");
+      }
+
+      const notion = new Client();
+      const response = await notion.oauth.token({
+        client_id: services.config.notionOAuth.clientId,
+        client_secret: services.config.notionOAuth.clientSecret,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: services.config.notionOAuth.redirectUri,
+      });
+
+      const ownerUser =
+        response.owner.type === "user" && "user" in response.owner
+          ? (response.owner.user as Record<string, unknown>)
+          : undefined;
+      const ownerPerson =
+        ownerUser?.person && typeof ownerUser.person === "object"
+          ? (ownerUser.person as Record<string, unknown>)
+          : undefined;
+
+      services.store.upsertNotionOAuthConnection({
+        alias: parsedState.data.alias,
+        label: parsedState.data.label ?? response.workspace_name ?? parsedState.data.alias,
+        token: response.access_token,
+        refreshToken: response.refresh_token,
+        defaultParentPageId: parsedState.data.defaultParentPageId,
+        notionVersion: parsedState.data.notionVersion,
+        workspaceId: response.workspace_id,
+        workspaceName: response.workspace_name,
+        workspaceIcon: response.workspace_icon,
+        botId: response.bot_id,
+        ownerType: response.owner.type,
+        ownerUserId: typeof ownerUser?.id === "string" ? ownerUser.id : undefined,
+        ownerUserName: typeof ownerUser?.name === "string" ? ownerUser.name : undefined,
+        ownerUserEmail: typeof ownerPerson?.email === "string" ? ownerPerson.email : undefined,
+      });
+
+      res.redirect(
+        buildAdminRedirect(services.config, {
+          notion_oauth: "success",
+          alias: parsedState.data.alias,
+        }),
+      );
+    } catch (error) {
+      res.redirect(
+        buildAdminRedirect(services.config, {
+          notion_oauth: "error",
+          error: error instanceof Error ? error.message : "OAuth callback failed",
+        }),
+      );
+    }
   });
 
   app.post("/api/admin/login", (req, res) => {
@@ -109,7 +221,42 @@ export function registerAdminRoutes(app: Express, services: {
       connectors: services.store.listConnectors(),
       catalog: connectorCatalog,
       state_file: services.config.stateFile,
+      notion_oauth: {
+        enabled: services.config.notionOAuth.enabled,
+        redirect_uri: services.config.notionOAuth.redirectUri,
+      },
     });
+  });
+
+  app.get("/api/admin/connectors/notion/oauth/start", (req, res) => {
+    try {
+      if (!services.config.notionOAuth.enabled || !services.config.notionOAuth.clientId || !services.config.notionOAuth.redirectUri) {
+        throw new Error("Notion OAuth no esta configurado. Define client_id, client_secret y redirect_uri en el servidor.");
+      }
+
+      const parsed = notionOauthStartSchema.parse(req.query);
+      const stateToken = createSignedPayload(
+        services.config.adminSessionSecret,
+        {
+          alias: parsed.alias,
+          label: parsed.label,
+          defaultParentPageId: parsed.defaultParentPageId,
+          notionVersion: parsed.notionVersion,
+        },
+        1000 * 60 * 15,
+      );
+
+      const target = new URL("https://api.notion.com/v1/oauth/authorize");
+      target.searchParams.set("client_id", services.config.notionOAuth.clientId);
+      target.searchParams.set("response_type", "code");
+      target.searchParams.set("owner", "user");
+      target.searchParams.set("redirect_uri", services.config.notionOAuth.redirectUri);
+      target.searchParams.set("state", stateToken);
+
+      res.redirect(target.toString());
+    } catch (error) {
+      toResponseError(res, error);
+    }
   });
 
   app.post("/api/admin/connectors/notion", (req, res) => {
