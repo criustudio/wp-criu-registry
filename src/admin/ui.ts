@@ -41,17 +41,13 @@ export function renderAdminPage(): string {
       p { margin: 0; }
       .subtle { color: var(--muted); }
       main {
-        display: grid;
-        grid-template-columns: minmax(240px, 0.88fr) minmax(380px, 1.15fr) minmax(440px, 1.32fr);
-        grid-template-areas:
-          "connector notion wordpress"
-          "usage notion wordpress"
-          "catalog catalog catalog";
-        gap: 18px;
         width: var(--shell);
         margin: 0 auto;
         padding: 16px 0 28px;
-        align-items: start;
+      }
+      .tab-shell {
+        display: grid;
+        gap: 18px;
       }
       section, .hero, .login-card {
         background: var(--panel);
@@ -96,6 +92,58 @@ export function renderAdminPage(): string {
       }
       .stack > * {
         min-width: 0;
+      }
+      .tab-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 10px;
+        background: rgba(255,253,248,.82);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 10px 24px rgba(36, 34, 28, 0.05);
+        backdrop-filter: blur(10px);
+        position: sticky;
+        top: 12px;
+        z-index: 5;
+      }
+      .tab-button {
+        border-color: transparent;
+        background: transparent;
+        color: var(--muted);
+        padding: 11px 16px;
+        min-height: 44px;
+      }
+      .tab-button:hover,
+      .tab-button:focus-visible {
+        border-color: var(--line);
+        color: var(--text);
+        outline: none;
+      }
+      .tab-button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+        box-shadow: 0 12px 24px rgba(15,92,77,.16);
+      }
+      .tab-panel {
+        display: none;
+      }
+      .tab-panel.active {
+        display: grid;
+        gap: 18px;
+      }
+      .panel-grid {
+        display: grid;
+        gap: 18px;
+        align-items: start;
+      }
+      .panel-grid.notion,
+      .panel-grid.wordpress {
+        grid-template-columns: minmax(360px, .92fr) minmax(460px, 1.08fr);
+      }
+      .panel-grid.other {
+        grid-template-columns: minmax(240px, .72fr) minmax(360px, 1fr) minmax(280px, .92fr);
       }
       .section-head {
         display: flex;
@@ -216,29 +264,25 @@ export function renderAdminPage(): string {
         color: var(--text);
         white-space: pre-wrap;
       }
-      #connector-section { grid-area: connector; }
-      #notion-section { grid-area: notion; }
-      #wordpress-section { grid-area: wordpress; }
-      #catalog-section { grid-area: catalog; }
-      #usage-section { grid-area: usage; }
+      .intro-card {
+        display: grid;
+        gap: 6px;
+      }
       @media (max-width: 1400px) {
-        main {
-          grid-template-columns: minmax(300px, 1fr) minmax(340px, 1fr);
-          grid-template-areas:
-            "notion wordpress"
-            "connector catalog"
-            "usage usage";
+        .panel-grid.notion,
+        .panel-grid.wordpress,
+        .panel-grid.other {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
       @media (max-width: 980px) {
-        main {
+        .tab-nav {
+          position: static;
+        }
+        .panel-grid.notion,
+        .panel-grid.wordpress,
+        .panel-grid.other {
           grid-template-columns: 1fr;
-          grid-template-areas:
-            "notion"
-            "wordpress"
-            "connector"
-            "catalog"
-            "usage";
         }
       }
       @media (max-width: 760px) {
@@ -252,6 +296,14 @@ export function renderAdminPage(): string {
         main {
           width: min(100vw - 24px, 100%);
           padding: 14px 0 24px;
+        }
+        .tab-nav {
+          padding: 8px;
+          border-radius: 16px;
+        }
+        .tab-button {
+          flex: 1 1 calc(50% - 10px);
+          justify-content: center;
         }
         .panel-scroll {
           max-height: none;
@@ -307,72 +359,110 @@ export function renderAdminPage(): string {
       </div>
 
       <main>
-        <section id="connector-section" class="stack">
-          <div class="section-head">
-            <h2>Conectores activos</h2>
-            <span class="subtle">Estado persistido</span>
-          </div>
-          <div id="connector-overview" class="stack"></div>
-        </section>
+        <div class="tab-shell">
+          <nav class="tab-nav" aria-label="Areas del panel">
+            <button class="tab-button active" data-tab="notion" aria-selected="true">Notion</button>
+            <button class="tab-button" data-tab="wordpress" aria-selected="false">WordPress</button>
+            <button class="tab-button" data-tab="other" aria-selected="false">Otros</button>
+          </nav>
 
-        <section id="notion-section" class="stack">
-          <h2>Alta Notion</h2>
-          <div id="notion-oauth-status" class="message"></div>
-          <div class="stack">
-            <label class="stack"><span>Alias</span><input id="notion-alias" /></label>
-            <label class="stack"><span>Label</span><input id="notion-label" /></label>
-            <label class="stack"><span>Default Parent Page ID (opcional)</span><input id="notion-parent" /></label>
-            <label class="stack"><span>Notion Version</span><input id="notion-version" placeholder="2025-09-03" /></label>
-          </div>
-          <div class="form-actions">
-            <button id="connect-notion" class="primary">Conectar con Notion</button>
-          </div>
-          <div class="stack panel-scroll">
-            <h3>Workspaces Notion</h3>
-            <div id="notion-table" class="table-wrap"></div>
-          </div>
-        </section>
+          <div class="tab-panel active" data-panel="notion">
+            <div class="panel-grid notion">
+              <section id="notion-section" class="stack">
+                <div class="intro-card">
+                  <h2>Alta Notion</h2>
+                  <p class="subtle">Conecta workspaces por alias y deja disponible cada perfil para MCP sin redeploy adicional.</p>
+                </div>
+                <div id="notion-oauth-status" class="message"></div>
+                <div class="stack">
+                  <label class="stack"><span>Alias</span><input id="notion-alias" /></label>
+                  <label class="stack"><span>Label</span><input id="notion-label" /></label>
+                  <label class="stack"><span>Default Parent Page ID (opcional)</span><input id="notion-parent" /></label>
+                  <label class="stack"><span>Notion Version</span><input id="notion-version" placeholder="2025-09-03" /></label>
+                </div>
+                <div class="form-actions">
+                  <button id="connect-notion" class="primary">Conectar con Notion</button>
+                </div>
+              </section>
 
-        <section id="wordpress-section" class="stack">
-          <h2>Alta WordPress</h2>
-          <div class="stack">
-            <label class="stack"><span>site_id</span><input id="wp-site-id" /></label>
-            <label class="stack"><span>site_label</span><input id="wp-site-label" /></label>
-            <label class="stack"><span>environment</span>
-              <select id="wp-environment">
-                <option value="production">production</option>
-                <option value="staging">staging</option>
-                <option value="development">development</option>
-              </select>
-            </label>
-            <label class="stack"><span>base_url</span><input id="wp-base-url" /></label>
-            <label class="stack"><span>bridge_url</span><input id="wp-bridge-url" /></label>
-            <label class="stack"><span>token</span><input id="wp-token" type="password" /></label>
-            <label class="stack"><span>Notas del sitio</span><textarea id="wp-site-notes" placeholder="Una nota por línea"></textarea></label>
-            <label class="stack"><span>Group</span><input id="wp-group" /></label>
-            <label class="stack"><span>Tags</span><textarea id="wp-tags" placeholder="Un tag por línea"></textarea></label>
-            <label class="stack"><span>Notas internas</span><textarea id="wp-metadata-notes" placeholder="Una nota por línea"></textarea></label>
+              <section class="stack">
+                <div class="section-head">
+                  <h2>Workspaces Notion</h2>
+                  <span class="subtle">Aliases activos</span>
+                </div>
+                <div id="notion-table" class="table-wrap panel-scroll"></div>
+              </section>
+            </div>
           </div>
-          <div class="form-actions">
-            <button id="save-wordpress" class="primary">Guardar sitio WordPress</button>
-          </div>
-          <div class="stack panel-scroll">
-            <h3>Sitios WordPress</h3>
-            <div id="wordpress-table" class="table-wrap"></div>
-          </div>
-        </section>
 
-        <section id="catalog-section" class="stack">
-          <h2>Catálogo futuro</h2>
-          <p class="subtle">Patrón técnico de onboarding para integrar una plataforma nueva más adelante.</p>
-          <div id="catalog-grid" class="stack panel-scroll"></div>
-        </section>
+          <div class="tab-panel" data-panel="wordpress">
+            <div class="panel-grid wordpress">
+              <section id="wordpress-section" class="stack">
+                <div class="intro-card">
+                  <h2>Alta WordPress</h2>
+                  <p class="subtle">Registra, oculta o desactiva sitios sin romper el bridge actual ni el flujo del plugin.</p>
+                </div>
+                <div class="stack">
+                  <label class="stack"><span>site_id</span><input id="wp-site-id" /></label>
+                  <label class="stack"><span>site_label</span><input id="wp-site-label" /></label>
+                  <label class="stack"><span>environment</span>
+                    <select id="wp-environment">
+                      <option value="production">production</option>
+                      <option value="staging">staging</option>
+                      <option value="development">development</option>
+                    </select>
+                  </label>
+                  <label class="stack"><span>base_url</span><input id="wp-base-url" /></label>
+                  <label class="stack"><span>bridge_url</span><input id="wp-bridge-url" /></label>
+                  <label class="stack"><span>token</span><input id="wp-token" type="password" /></label>
+                  <label class="stack"><span>Notas del sitio</span><textarea id="wp-site-notes" placeholder="Una nota por línea"></textarea></label>
+                  <label class="stack"><span>Group</span><input id="wp-group" /></label>
+                  <label class="stack"><span>Tags</span><textarea id="wp-tags" placeholder="Un tag por línea"></textarea></label>
+                  <label class="stack"><span>Notas internas</span><textarea id="wp-metadata-notes" placeholder="Una nota por línea"></textarea></label>
+                </div>
+                <div class="form-actions">
+                  <button id="save-wordpress" class="primary">Guardar sitio WordPress</button>
+                </div>
+              </section>
 
-        <section id="usage-section" class="stack">
-          <h2>Uso personal</h2>
-          <p class="subtle">Referencia rápida para conectar Codex, registrar WordPress y operar el hub sin depender de notas externas.</p>
-          <div id="usage-guide" class="stack"></div>
-        </section>
+              <section class="stack">
+                <div class="section-head">
+                  <h2>Sitios WordPress</h2>
+                  <span class="subtle">Registry operativo</span>
+                </div>
+                <div id="wordpress-table" class="table-wrap panel-scroll"></div>
+              </section>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-panel="other">
+            <div class="panel-grid other">
+              <section id="connector-section" class="stack">
+                <div class="section-head">
+                  <h2>Conectores activos</h2>
+                  <span class="subtle">Estado persistido</span>
+                </div>
+                <div id="connector-overview" class="stack"></div>
+              </section>
+
+              <section id="catalog-section" class="stack">
+                <div class="intro-card">
+                  <h2>Catálogo futuro</h2>
+                  <p class="subtle">Patrón técnico para sumar plataformas nuevas sin rehacer la arquitectura del hub.</p>
+                </div>
+                <div id="catalog-grid" class="stack panel-scroll"></div>
+              </section>
+
+              <section id="usage-section" class="stack">
+                <div class="intro-card">
+                  <h2>Uso personal</h2>
+                  <p class="subtle">Referencia rápida para conectar Codex, registrar WordPress y operar el hub sin depender de notas externas.</p>
+                </div>
+                <div id="usage-guide" class="stack"></div>
+              </section>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
 
@@ -382,6 +472,7 @@ export function renderAdminPage(): string {
         connectors: [],
         catalog: [],
         notionOAuth: { enabled: false, redirect_uri: "" },
+        activeTab: "notion",
       };
 
       const loginShell = document.getElementById("login-shell");
@@ -558,6 +649,38 @@ export function renderAdminPage(): string {
         container.textContent = "Conexion por autorizacion Notion activa. Redirect URI actual: " + (state.notionOAuth.redirect_uri || "(sin redirect_uri)") + ". Si no defines parent, el hub podra crear paginas nuevas en Private.";
       }
 
+      function setActiveTab(tabName) {
+        state.activeTab = tabName;
+        try {
+          window.localStorage.setItem("mcpHubActiveTab", tabName);
+        } catch {}
+
+        document.querySelectorAll("[data-tab]").forEach((button) => {
+          const active = button.dataset.tab === tabName;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-selected", active ? "true" : "false");
+        });
+
+        document.querySelectorAll("[data-panel]").forEach((panel) => {
+          panel.classList.toggle("active", panel.dataset.panel === tabName);
+        });
+      }
+
+      function hydrateActiveTab() {
+        const hashTab = window.location.hash.replace("#tab-", "").trim();
+        if (hashTab && ["notion", "wordpress", "other"].includes(hashTab)) {
+          state.activeTab = hashTab;
+          return;
+        }
+
+        try {
+          const saved = window.localStorage.getItem("mcpHubActiveTab");
+          if (saved && ["notion", "wordpress", "other"].includes(saved)) {
+            state.activeTab = saved;
+          }
+        } catch {}
+      }
+
       function render() {
         loginShell.classList.toggle("hidden", state.authenticated);
         appShell.classList.toggle("hidden", !state.authenticated);
@@ -569,6 +692,7 @@ export function renderAdminPage(): string {
         renderWordPressTable();
         renderCatalog();
         renderUsageGuide();
+        setActiveTab(state.activeTab);
       }
 
       async function loadOverview() {
@@ -585,8 +709,10 @@ export function renderAdminPage(): string {
         if (!status) return;
 
         if (status === "success") {
+          state.activeTab = "notion";
           showMessage(globalMessage, "Conexion Notion autorizada para alias: " + (params.get("alias") || "(sin alias)"));
         } else {
+          state.activeTab = "notion";
           showMessage(globalMessage, params.get("error") || "No se pudo completar la autorizacion de Notion.");
         }
 
@@ -676,6 +802,11 @@ export function renderAdminPage(): string {
       document.body.addEventListener("click", async (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
+        if (target.dataset.tab) {
+          setActiveTab(target.dataset.tab);
+          window.history.replaceState({}, "", window.location.pathname + window.location.search + "#tab-" + target.dataset.tab);
+          return;
+        }
         const action = target.dataset.action;
         if (!action) return;
 
@@ -757,6 +888,7 @@ export function renderAdminPage(): string {
         }
       });
 
+      hydrateActiveTab();
       refreshSession().catch((error) => {
         showMessage(loginMessage, error.message);
         loginShell.classList.remove("hidden");
