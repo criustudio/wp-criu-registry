@@ -154,6 +154,7 @@ function buildWordPressConnector(): WordPressConnectorRecord {
     capabilities: ["mcp", "registry", "bridge", "admin", "sites"],
     config: {
       registration_enabled: true,
+      blocked_site_ids: [],
     },
     entities: [],
     last_check_at: undefined,
@@ -308,6 +309,14 @@ export class StateStore {
 
         const wordpressConnector = buildWordPressConnector();
         wordpressConnector.status = connector.status === "disabled" ? "disabled" : "enabled";
+        const rawConfig =
+          connector.config && typeof connector.config === "object"
+            ? (connector.config as Partial<WordPressConnectorRecord["config"]>)
+            : undefined;
+        wordpressConnector.config = {
+          registration_enabled: rawConfig?.registration_enabled !== false,
+          blocked_site_ids: normalizeStringArray(rawConfig?.blocked_site_ids),
+        };
         wordpressConnector.entities = normalizedEntities;
         wordpressConnector.updated_at = connector.updated_at ?? nowIso();
         wordpressConnector.last_check_at = connector.last_check_at;
@@ -611,6 +620,41 @@ export class StateStore {
     return structuredClone(this.getWordPressConnectorMutable());
   }
 
+  private normalizeSiteKey(siteId: string): string {
+    return siteId.trim().toLowerCase();
+  }
+
+  isWordPressSiteBlocked(siteId: string): boolean {
+    const connector = this.getWordPressConnectorMutable();
+    const key = this.normalizeSiteKey(siteId);
+    return connector.config.blocked_site_ids.some((candidate) => this.normalizeSiteKey(candidate) === key);
+  }
+
+  blockWordPressSite(siteId: string): void {
+    const connector = this.getWordPressConnectorMutable();
+    const key = this.normalizeSiteKey(siteId);
+    if (connector.config.blocked_site_ids.some((candidate) => this.normalizeSiteKey(candidate) === key)) {
+      return;
+    }
+
+    connector.config.blocked_site_ids.push(siteId.trim());
+    connector.updated_at = nowIso();
+    this.persist();
+  }
+
+  unblockWordPressSite(siteId: string): void {
+    const connector = this.getWordPressConnectorMutable();
+    const key = this.normalizeSiteKey(siteId);
+    const next = connector.config.blocked_site_ids.filter((candidate) => this.normalizeSiteKey(candidate) !== key);
+    if (next.length === connector.config.blocked_site_ids.length) {
+      return;
+    }
+
+    connector.config.blocked_site_ids = next;
+    connector.updated_at = nowIso();
+    this.persist();
+  }
+
   listWordPressSites(options?: { includeHidden?: boolean; includeDisabled?: boolean }): WordPressSiteEntity[] {
     return this.getWordPressConnectorMutable().entities
       .filter((entity) => options?.includeHidden || !entity.hidden)
@@ -624,6 +668,14 @@ export class StateStore {
     source: WordPressSiteRecord["source"] = "manual",
   ): WordPressSiteEntity {
     const site = normalizeWordPressSiteRecord(rawSite, source);
+    if (source === "wp_criu_auto_register" && this.isWordPressSiteBlocked(site.site_id)) {
+      throw new Error(`WordPress site blocked by admin deletion: ${site.site_id}`);
+    }
+
+    if (source === "manual") {
+      this.unblockWordPressSite(site.site_id);
+    }
+
     const connector = this.getWordPressConnectorMutable();
     const existingIndex = connector.entities.findIndex(
       (entity) => entity.entity_id.toLowerCase() === site.site_id.toLowerCase(),
@@ -686,9 +738,10 @@ export class StateStore {
     return structuredClone(entity);
   }
 
-  deleteWordPressSite(siteId: string): void {
+  deleteWordPressSite(siteId: string, options?: { blockAutoRegister?: boolean }): void {
     const connector = this.getWordPressConnectorMutable();
-    const next = connector.entities.filter((entity) => entity.entity_id.toLowerCase() !== siteId.toLowerCase());
+    const key = this.normalizeSiteKey(siteId);
+    const next = connector.entities.filter((entity) => this.normalizeSiteKey(entity.entity_id) !== key);
     if (next.length === connector.entities.length) {
       throw new Error(`WordPress site not found: ${siteId}`);
     }
@@ -696,6 +749,10 @@ export class StateStore {
     connector.entities = next;
     connector.updated_at = nowIso();
     this.persist();
+
+    if (options?.blockAutoRegister !== false) {
+      this.blockWordPressSite(siteId);
+    }
   }
 
   setWordPressSiteHealth(

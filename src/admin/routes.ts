@@ -337,7 +337,11 @@ export function registerAdminRoutes(app: Express, services: {
   app.delete("/api/admin/connectors/wordpress/sites/:siteId", (req, res) => {
     try {
       services.wordPressHub.deleteSite(String(req.params.siteId));
-      res.json({ ok: true });
+      res.json({
+        ok: true,
+        deleted: true,
+        blocked_auto_register: true,
+      });
     } catch (error) {
       toResponseError(res, error, 404);
     }
@@ -438,7 +442,11 @@ export function registerWordPressRegistryRoutes(app: Express, services: {
   app.delete("/sites/:siteId", requireRegistryAuth, (req, res) => {
     try {
       services.wordPressHub.deleteSite(String(req.params.siteId));
-      res.json({ ok: true, deleted: true });
+      res.json({
+        ok: true,
+        deleted: true,
+        blocked_auto_register: true,
+      });
     } catch (error) {
       toResponseError(res, error, 404);
     }

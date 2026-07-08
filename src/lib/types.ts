@@ -66,6 +66,7 @@ export type WordPressSiteEntity = {
 
 export type WordPressConnectorConfig = {
   registration_enabled: boolean;
+  blocked_site_ids: string[];
 };
 
 export type WordPressConnectorRecord = {

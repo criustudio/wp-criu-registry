@@ -1470,8 +1470,9 @@ export function renderAdminPage(): string {
           }
 
           if (action === "delete-site") {
-            if (window.confirm("Eliminar este sitio WordPress del registry?")) {
+            if (window.confirm("Eliminar este sitio WordPress del registry y bloquear su auto-registro?")) {
               await api("/api/admin/connectors/wordpress/sites/" + target.dataset.siteId, { method: "DELETE" });
+              showMessage(globalMessage, "Sitio eliminado y bloqueado para auto-registro hasta que lo vuelvas a crear manualmente.", "info");
             }
           }
 
