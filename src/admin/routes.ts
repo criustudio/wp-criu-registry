@@ -66,7 +66,7 @@ const wordPressPatchSchema = z.object({
   group: z.string().nullable().optional(),
   wp_version: z.string().nullable().optional(),
   php_version: z.string().nullable().optional(),
-  service_user: z.string().nullable().optional(),
+  service_user: z.union([z.string(), z.number()]).nullable().optional(),
 });
 
 const wordPressSyncSchema = z.object({

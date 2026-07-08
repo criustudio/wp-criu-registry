@@ -4,7 +4,25 @@ import { z } from "zod/v4";
 import type { StateStore, WordPressSiteMutation } from "./lib/state.js";
 import type { ConnectorStatus, WordPressEnvironment, WordPressSiteEntity } from "./lib/types.js";
 
-const wordPressSiteAdminInputSchema = z.object({
+const wordPressSiteAdminInputSchema = z.preprocess((rawInput) => {
+  if (!rawInput || typeof rawInput !== "object") {
+    return rawInput;
+  }
+
+  const payload = { ...(rawInput as Record<string, unknown>) };
+  if (payload.token == null) {
+    const bridgeToken = payload.bridge_token ?? payload.site_token ?? payload.x_codex_token;
+    if (typeof bridgeToken === "string" || typeof bridgeToken === "number") {
+      payload.token = String(bridgeToken);
+    }
+  }
+
+  if (payload.service_user != null && typeof payload.service_user === "number" && Number.isFinite(payload.service_user)) {
+    payload.service_user = String(payload.service_user);
+  }
+
+  return payload;
+}, z.object({
   site_id: z.string().min(1),
   site_label: z.string().min(1),
   environment: z.enum(["production", "staging", "development"]).default("production"),
@@ -19,8 +37,8 @@ const wordPressSiteAdminInputSchema = z.object({
   group: z.string().optional(),
   wp_version: z.string().optional(),
   php_version: z.string().optional(),
-  service_user: z.string().optional(),
-});
+  service_user: z.union([z.string(), z.number()]).optional(),
+}));
 
 type BridgeSiteInfo = {
   site_id: string;
@@ -325,7 +343,7 @@ export function normalizeWordPressMutationInput(input: Partial<{
   group: string | null;
   wp_version: string | null;
   php_version: string | null;
-  service_user: string | null;
+  service_user: string | number | null;
 }>): WordPressSiteMutation {
   return {
     site_label: input.site_label,
@@ -341,6 +359,9 @@ export function normalizeWordPressMutationInput(input: Partial<{
     group: input.group,
     wp_version: input.wp_version,
     php_version: input.php_version,
-    service_user: input.service_user,
+    service_user:
+      input.service_user === null || input.service_user === undefined
+        ? input.service_user
+        : String(input.service_user),
   };
 }
