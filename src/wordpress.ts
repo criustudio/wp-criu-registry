@@ -1,8 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { z } from "zod/v4";
 import type { StateStore, WordPressSiteMutation } from "./lib/state.js";
 import type { ConnectorStatus, WordPressEnvironment, WordPressSiteEntity } from "./lib/types.js";
+
+const execFileAsync = promisify(execFile);
 
 const wordPressSiteAdminInputSchema = z.preprocess((rawInput) => {
   if (!rawInput || typeof rawInput !== "object") {
@@ -50,6 +54,14 @@ type BridgeSiteInfo = {
 type BridgeResponse = {
   site: BridgeSiteInfo;
   data: unknown;
+};
+
+type HttpBridgeResult = {
+  status: number;
+  statusText: string;
+  rawText: string;
+  parsed: unknown;
+  transport: "fetch" | "curl";
 };
 
 type ValidatedRegistrationPayload = {
@@ -107,6 +119,18 @@ function extractNestedValue(payload: unknown, keys: string[]): string | undefine
   }
 
   return typeof current === "string" && current.trim() ? current.trim() : undefined;
+}
+
+function parseBridgeBody(rawText: string): unknown {
+  if (!rawText) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawText);
+  } catch {
+    return { text: rawText };
+  }
 }
 
 export class WordPressHub {
@@ -176,26 +200,9 @@ export class WordPressHub {
     token: string;
   }): Promise<BridgeResponse> {
     const url = `${site.bridge_url.replace(/\/$/, "")}/site-info`;
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "X-Codex-Token": site.token,
-        "Content-Type": "application/json",
-      },
-    });
-
-    const rawText = await response.text();
-    let parsed: unknown = null;
-    if (rawText) {
-      try {
-        parsed = JSON.parse(rawText);
-      } catch {
-        parsed = { text: rawText };
-      }
-    }
-
-    if (!response.ok) {
-      throw new Error(`Bridge ${response.status} en ${site.site_id}: ${rawText || response.statusText}`);
+    const response = await this.requestBridgeSiteInfo(url, site.token);
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`Bridge ${response.status} en ${site.site_id}: ${response.rawText || response.statusText}`);
     }
 
     return {
@@ -205,7 +212,87 @@ export class WordPressHub {
         environment: site.environment,
         bridge_url: site.bridge_url,
       },
-      data: parsed,
+      data: response.parsed,
+    };
+  }
+
+  private async requestBridgeSiteInfo(url: string, token: string): Promise<HttpBridgeResult> {
+    const primaryErrorMessages: string[] = [];
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "X-Codex-Token": token,
+          "Content-Type": "application/json",
+        },
+      });
+      const rawText = await response.text();
+      const parsed = parseBridgeBody(rawText);
+      if (response.ok) {
+        return {
+          status: response.status,
+          statusText: response.statusText,
+          rawText,
+          parsed,
+          transport: "fetch",
+        };
+      }
+      primaryErrorMessages.push(`fetch ${response.status}: ${rawText || response.statusText}`);
+    } catch (error) {
+      primaryErrorMessages.push(error instanceof Error ? error.message : String(error));
+    }
+
+    try {
+      return await this.requestBridgeSiteInfoViaCurl(url, token);
+    } catch (curlError) {
+      const message = curlError instanceof Error ? curlError.message : String(curlError);
+      const details = primaryErrorMessages.filter(Boolean).join(" | ");
+      throw new Error(details ? `${details} | curl fallback failed: ${message}` : `curl fallback failed: ${message}`);
+    }
+  }
+
+  private async requestBridgeSiteInfoViaCurl(url: string, token: string): Promise<HttpBridgeResult> {
+    const curlBinary = process.platform === "win32" ? "curl.exe" : "curl";
+    const marker = "__MCP_HUB_HTTP_STATUS__:";
+    const { stdout } = await execFileAsync(
+      curlBinary,
+      [
+        "--silent",
+        "--show-error",
+        "--location",
+        "--http1.1",
+        "--max-time",
+        "20",
+        "--header",
+        `X-Codex-Token: ${token}`,
+        "--header",
+        "Accept: application/json, text/plain, */*",
+        "--write-out",
+        `\n${marker}%{http_code}`,
+        url,
+      ],
+      { maxBuffer: 1024 * 1024 * 4 },
+    );
+
+    const markerIndex = stdout.lastIndexOf(marker);
+    if (markerIndex === -1) {
+      throw new Error("curl fallback returned an unexpected response without status marker.");
+    }
+
+    const rawText = stdout.slice(0, markerIndex).trim();
+    const statusText = stdout.slice(markerIndex + marker.length).trim();
+    const status = Number.parseInt(statusText, 10);
+    if (!Number.isFinite(status)) {
+      throw new Error(`curl fallback returned an invalid HTTP status: ${statusText}`);
+    }
+
+    return {
+      status,
+      statusText: status === 200 ? "OK" : statusText,
+      rawText,
+      parsed: parseBridgeBody(rawText),
+      transport: "curl",
     };
   }
 

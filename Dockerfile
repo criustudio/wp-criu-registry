@@ -2,7 +2,7 @@ FROM node:22-alpine AS base
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN apk add --no-cache curl && npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
