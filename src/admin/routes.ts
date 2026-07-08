@@ -367,6 +367,7 @@ export function registerWordPressRegistryRoutes(app: Express, services: {
   wordPressHub: WordPressHub;
 }): void {
   app.use("/register-site", express.json({ limit: "2mb" }));
+  app.use("/register-site/bridge", express.json({ limit: "2mb" }));
   app.use("/sites/:siteId", express.json({ limit: "2mb" }));
 
   const requireRegistryAuth = (req: Request, res: Response, next: NextFunction) => {
@@ -404,6 +405,20 @@ export function registerWordPressRegistryRoutes(app: Express, services: {
         ok: true,
         site_id: site.site.site_id,
         registered: true,
+      });
+    } catch (error) {
+      toResponseError(res, error);
+    }
+  });
+
+  app.post("/register-site/bridge", async (req, res) => {
+    try {
+      const result = await services.wordPressHub.registerSiteViaBridgeValidation(req.body, "wp_criu_auto_register");
+      res.json({
+        ok: true,
+        site_id: result.site.site.site_id,
+        registered: true,
+        verified_via_bridge: true,
       });
     } catch (error) {
       toResponseError(res, error);

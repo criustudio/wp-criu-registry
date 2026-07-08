@@ -52,6 +52,24 @@ type BridgeResponse = {
   data: unknown;
 };
 
+type ValidatedRegistrationPayload = {
+  site_id: string;
+  site_label: string;
+  environment: WordPressEnvironment;
+  base_url: string;
+  bridge_url: string;
+  token: string;
+  site_notes: string[];
+  hidden?: boolean;
+  disabled?: boolean;
+  tags: string[];
+  metadata_notes: string[];
+  group?: string;
+  wp_version?: string;
+  php_version?: string;
+  service_user?: string;
+};
+
 function safeJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
@@ -150,6 +168,154 @@ export class WordPressHub {
     return match;
   }
 
+  private async bridgeProbe(site: {
+    site_id: string;
+    site_label: string;
+    environment: WordPressEnvironment;
+    bridge_url: string;
+    token: string;
+  }): Promise<BridgeResponse> {
+    const url = `${site.bridge_url.replace(/\/$/, "")}/site-info`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "X-Codex-Token": site.token,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const rawText = await response.text();
+    let parsed: unknown = null;
+    if (rawText) {
+      try {
+        parsed = JSON.parse(rawText);
+      } catch {
+        parsed = { text: rawText };
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(`Bridge ${response.status} en ${site.site_id}: ${rawText || response.statusText}`);
+    }
+
+    return {
+      site: {
+        site_id: site.site_id,
+        site_label: site.site_label,
+        environment: site.environment,
+        bridge_url: site.bridge_url,
+      },
+      data: parsed,
+    };
+  }
+
+  validateRegistrationPayload(rawInput: unknown): ValidatedRegistrationPayload {
+    const parsed = wordPressSiteAdminInputSchema.parse(rawInput);
+    return {
+      site_id: parsed.site_id.trim(),
+      site_label: parsed.site_label.trim(),
+      environment: parsed.environment,
+      base_url: parsed.base_url.trim(),
+      bridge_url: parsed.bridge_url.trim(),
+      token: parsed.token.trim(),
+      site_notes: normalizeArrayInput(parsed.site_notes),
+      hidden: parsed.hidden,
+      disabled: parsed.disabled,
+      tags: normalizeArrayInput(parsed.tags),
+      metadata_notes: normalizeArrayInput(parsed.metadata_notes),
+      group: parsed.group?.trim() || undefined,
+      wp_version: parsed.wp_version?.trim() || undefined,
+      php_version: parsed.php_version?.trim() || undefined,
+      service_user:
+        parsed.service_user === undefined || parsed.service_user === null
+          ? undefined
+          : String(parsed.service_user).trim() || undefined,
+    };
+  }
+
+  async registerSiteViaBridgeValidation(rawInput: unknown, source: "manual" | "wp_criu_auto_register" = "wp_criu_auto_register") {
+    const payload = this.validateRegistrationPayload(rawInput);
+    const bridgeInfo = await this.bridgeProbe({
+      site_id: payload.site_id,
+      site_label: payload.site_label,
+      environment: payload.environment,
+      bridge_url: payload.bridge_url,
+      token: payload.token,
+    });
+
+    const remoteSiteId =
+      extractNestedValue(bridgeInfo.data, ["site_id"]) ??
+      extractNestedValue(bridgeInfo.data, ["site_info", "site_id"]) ??
+      extractNestedValue(bridgeInfo.data, ["site", "site_id"]);
+    if (remoteSiteId && remoteSiteId.toLowerCase() !== payload.site_id.toLowerCase()) {
+      throw new Error(`El bridge respondió site_id=${remoteSiteId}, pero el registro intentó usar ${payload.site_id}.`);
+    }
+
+    const remoteEnvironment =
+      extractNestedValue(bridgeInfo.data, ["environment"]) ??
+      extractNestedValue(bridgeInfo.data, ["site_info", "environment"]) ??
+      extractNestedValue(bridgeInfo.data, ["site", "environment"]);
+    if (remoteEnvironment && remoteEnvironment !== payload.environment) {
+      throw new Error(`El bridge respondió environment=${remoteEnvironment}, pero el registro intentó usar ${payload.environment}.`);
+    }
+
+    const site = this.store.registerWordPressSite(
+      {
+        site_id: payload.site_id,
+        site_label: payload.site_label,
+        environment: payload.environment,
+        base_url: payload.base_url,
+        bridge_url: payload.bridge_url,
+        token: payload.token,
+        notes: payload.site_notes,
+        wp_version: payload.wp_version,
+        php_version: payload.php_version,
+        service_user: payload.service_user,
+        source,
+      },
+      {
+        hidden: payload.hidden,
+        disabled: payload.disabled,
+        tags: payload.tags,
+        notes: payload.metadata_notes,
+        group: payload.group,
+      },
+      source,
+    );
+
+    const wpVersion =
+      extractNestedValue(bridgeInfo.data, ["wp_version"]) ??
+      extractNestedValue(bridgeInfo.data, ["site_info", "wp_version"]) ??
+      extractNestedValue(bridgeInfo.data, ["site", "wp_version"]) ??
+      payload.wp_version;
+    const phpVersion =
+      extractNestedValue(bridgeInfo.data, ["php_version"]) ??
+      extractNestedValue(bridgeInfo.data, ["site_info", "php_version"]) ??
+      extractNestedValue(bridgeInfo.data, ["site", "php_version"]) ??
+      payload.php_version;
+    const serviceUser =
+      extractNestedValue(bridgeInfo.data, ["service_user"]) ??
+      extractNestedValue(bridgeInfo.data, ["service_user_id"]) ??
+      extractNestedValue(bridgeInfo.data, ["site_info", "service_user"]) ??
+      extractNestedValue(bridgeInfo.data, ["site_info", "service_user_id"]) ??
+      extractNestedValue(bridgeInfo.data, ["site", "service_user"]) ??
+      extractNestedValue(bridgeInfo.data, ["site", "service_user_id"]) ??
+      payload.service_user;
+
+    const health = this.store.setWordPressSiteHealth(site.site.site_id, {
+      last_health: "ok",
+      last_error: null,
+      wp_version: wpVersion ?? null,
+      php_version: phpVersion ?? null,
+      service_user: serviceUser ?? null,
+    });
+
+    return {
+      site: health,
+      bridge: bridgeInfo,
+    };
+  }
+
   registerSite(rawInput: unknown, source: "manual" | "wp_criu_auto_register" = "manual"): WordPressSiteEntity {
     const parsed = wordPressSiteAdminInputSchema.parse(rawInput);
 
@@ -194,7 +360,13 @@ export class WordPressHub {
     const results = [];
     for (const entity of candidates) {
       try {
-        const response = await this.bridgeRequest(entity.site.site_id, "GET", "/site-info", undefined, true);
+        const response = await this.bridgeProbe({
+          site_id: entity.site.site_id,
+          site_label: entity.site.site_label,
+          environment: entity.site.environment,
+          bridge_url: entity.site.bridge_url,
+          token: entity.site.token,
+        });
         const wpVersion =
           extractNestedValue(response.data, ["wp_version"]) ??
           extractNestedValue(response.data, ["site_info", "wp_version"]) ??
