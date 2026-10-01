@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import type { AppConfig } from "./config.js";
+import type { CPanelHub } from "./cpanel.js";
 import type { StateStore } from "./lib/state.js";
 import type { NotionHub } from "./notion.js";
 import type { WordPressHub } from "./wordpress.js";
@@ -36,6 +37,7 @@ export function createServer(
     store: StateStore;
     getNotionHub: (options?: { includeDisabled?: boolean }) => NotionHub;
     wordPressHub: WordPressHub;
+    cPanelHub: CPanelHub;
   },
 ) {
   const server = new McpServer(
@@ -69,7 +71,115 @@ export function createServer(
           status: wordpress.status,
           sites: wordpress.entities.length,
         },
+        cpanel: {
+          label: services.store.getCPanelConnector().label,
+          status: services.store.getCPanelConnector().status,
+          accounts: services.cPanelHub.listOperationalAccounts().length,
+        },
       });
+    },
+  );
+
+  server.registerTool(
+    "cpanel_list_accounts",
+    {
+      title: "List cPanel Accounts",
+      description: "Lista las cuentas cPanel/WHM registradas sin revelar sus API tokens.",
+      annotations: { readOnlyHint: true },
+    },
+    async () => toTextResult("cPanel accounts", services.cPanelHub.listOperationalAccounts()),
+  );
+
+  server.registerTool(
+    "cpanel_check_account",
+    {
+      title: "Check cPanel Account",
+      description: "Valida la conexión API de una cuenta cPanel o una credencial WHM registrada.",
+      inputSchema: { account: z.string().min(1) },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ account }) => {
+      try {
+        return toTextResult("cPanel account check", await services.cPanelHub.validateAccount(account));
+      } catch (error) {
+        return toErrorResult(error instanceof Error ? error.message : "Unknown error");
+      }
+    },
+  );
+
+  server.registerTool(
+    "cpanel_list_mailboxes",
+    {
+      title: "List cPanel Mailboxes",
+      description: "Lista los buzones de correo de una cuenta cPanel registrada.",
+      inputSchema: { account: z.string().min(1) },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ account }) => {
+      try {
+        return toTextResult("cPanel mailboxes", await services.cPanelHub.listMailboxes(account));
+      } catch (error) {
+        return toErrorResult(error instanceof Error ? error.message : "Unknown error");
+      }
+    },
+  );
+
+  server.registerTool(
+    "cpanel_create_mailbox",
+    {
+      title: "Create cPanel Mailbox",
+      description: "Crea un buzón en la cuenta cPanel indicada. Requiere confirmación explícita del usuario en cada ejecución.",
+      inputSchema: {
+        account: z.string().min(1),
+        email: z.string().email(),
+        password: z.string().min(12),
+        quota: z.number().int().min(0).default(1024),
+      },
+      annotations: { openWorldHint: true },
+    },
+    async ({ account, email, password, quota }) => {
+      try {
+        return toTextResult(
+          "cPanel mailbox created",
+          await services.cPanelHub.createMailbox(account, email, password, quota),
+        );
+      } catch (error) {
+        return toErrorResult(error instanceof Error ? error.message : "Unknown error");
+      }
+    },
+  );
+
+  server.registerTool(
+    "cpanel_delete_mailbox",
+    {
+      title: "Delete cPanel Mailbox",
+      description: "Elimina un buzón de cPanel. Es una operación destructiva y debe confirmarse explícitamente antes de ejecutarse.",
+      inputSchema: { account: z.string().min(1), email: z.string().email() },
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    async ({ account, email }) => {
+      try {
+        return toTextResult("cPanel mailbox deleted", await services.cPanelHub.deleteMailbox(account, email));
+      } catch (error) {
+        return toErrorResult(error instanceof Error ? error.message : "Unknown error");
+      }
+    },
+  );
+
+  server.registerTool(
+    "whm_list_accounts",
+    {
+      title: "List WHM Accounts",
+      description: "Lista las cuentas visibles para una credencial WHM reseller o root registrada.",
+      inputSchema: { account: z.string().min(1) },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ account }) => {
+      try {
+        return toTextResult("WHM accounts", await services.cPanelHub.listWhmAccounts(account));
+      } catch (error) {
+        return toErrorResult(error instanceof Error ? error.message : "Unknown error");
+      }
     },
   );
 

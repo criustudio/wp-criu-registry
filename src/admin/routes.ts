@@ -2,6 +2,7 @@ import { Client } from "@notionhq/client";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod/v4";
 import type { AppConfig } from "../config.js";
+import type { CPanelHub } from "../cpanel.js";
 import {
   clearAdminSessionCookie,
   createSignedPayload,
@@ -73,6 +74,25 @@ const wordPressSyncSchema = z.object({
   site_id: z.string().min(1).optional(),
 });
 
+const cPanelAccountSchema = z.object({
+  account_id: z.string().min(1),
+  account_label: z.string().min(1),
+  auth_mode: z.enum(["cpanel_token", "whm_token"]).default("cpanel_token"),
+  host: z.string().min(1),
+  username: z.string().min(1),
+  domain: z.string().min(1).optional(),
+  port: z.coerce.number().int().min(1).max(65535).optional(),
+  token: z.string().min(1),
+  account_notes: z.union([z.array(z.string()), z.string()]).optional(),
+  hidden: z.boolean().optional(),
+  disabled: z.boolean().optional(),
+  tags: z.union([z.array(z.string()), z.string()]).optional(),
+  metadata_notes: z.union([z.array(z.string()), z.string()]).optional(),
+  group: z.string().nullable().optional(),
+});
+
+const cPanelAccountPatchSchema = cPanelAccountSchema.partial().omit({ account_id: true });
+
 function toResponseError(res: Response, error: unknown, status = 400): void {
   res.status(status).json({
     ok: false,
@@ -102,6 +122,7 @@ export function registerAdminRoutes(app: Express, services: {
   store: StateStore;
   getNotionHub: (options?: { includeDisabled?: boolean }) => NotionHub;
   wordPressHub: WordPressHub;
+  cPanelHub: CPanelHub;
 }): void {
   app.use("/api/admin", express.json({ limit: "2mb" }));
 
@@ -313,6 +334,66 @@ export function registerAdminRoutes(app: Express, services: {
       connector: services.store.getWordPressConnector(),
       sites: services.wordPressHub.listAdminSites(),
     });
+  });
+
+  app.get("/api/admin/connectors/cpanel/accounts", (_req, res) => {
+    res.json({
+      ok: true,
+      connector: services.cPanelHub.getConnector(),
+      accounts: services.cPanelHub.listAdminAccounts(),
+    });
+  });
+
+  app.post("/api/admin/connectors/cpanel/accounts", (req, res) => {
+    try {
+      const parsed = cPanelAccountSchema.parse(req.body);
+      const account = services.cPanelHub.registerAccount({
+        ...parsed,
+        notes: Array.isArray(parsed.account_notes) ? parsed.account_notes : parsed.account_notes?.split("\n"),
+      }, {
+        hidden: parsed.hidden,
+        disabled: parsed.disabled,
+        tags: Array.isArray(parsed.tags) ? parsed.tags : parsed.tags?.split("\n"),
+        notes: Array.isArray(parsed.metadata_notes) ? parsed.metadata_notes : parsed.metadata_notes?.split("\n"),
+        group: parsed.group ?? undefined,
+      });
+      res.json({ ok: true, account: { ...account, account: { ...account.account, token: "[configured]" } } });
+    } catch (error) {
+      toResponseError(res, error);
+    }
+  });
+
+  app.patch("/api/admin/connectors/cpanel/accounts/:accountId", (req, res) => {
+    try {
+      const parsed = cPanelAccountPatchSchema.parse(req.body);
+      const account = services.cPanelHub.patchAccount(String(req.params.accountId), {
+        ...parsed,
+        account_notes: Array.isArray(parsed.account_notes) ? parsed.account_notes : parsed.account_notes?.split("\n"),
+        tags: Array.isArray(parsed.tags) ? parsed.tags : parsed.tags?.split("\n"),
+        metadata_notes: Array.isArray(parsed.metadata_notes) ? parsed.metadata_notes : parsed.metadata_notes?.split("\n"),
+      });
+      res.json({ ok: true, account: { ...account, account: { ...account.account, token: "[configured]" } } });
+    } catch (error) {
+      toResponseError(res, error);
+    }
+  });
+
+  app.delete("/api/admin/connectors/cpanel/accounts/:accountId", (req, res) => {
+    try {
+      services.cPanelHub.deleteAccount(String(req.params.accountId));
+      res.json({ ok: true, deleted: true, blocked: true });
+    } catch (error) {
+      toResponseError(res, error, 404);
+    }
+  });
+
+  app.post("/api/admin/connectors/cpanel/accounts/:accountId/validate", async (req, res) => {
+    try {
+      const result = await services.cPanelHub.validateAccount(String(req.params.accountId));
+      res.json({ ok: true, result });
+    } catch (error) {
+      toResponseError(res, error);
+    }
   });
 
   app.post("/api/admin/connectors/wordpress/sites", (req, res) => {

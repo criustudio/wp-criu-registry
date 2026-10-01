@@ -7,7 +7,7 @@ Este servicio consolida dos cosas en una sola capa:
 
 ## Qué incluye ahora
 
-- Hub MCP con herramientas de Notion y WordPress.
+- Hub MCP con herramientas de Notion, WordPress y cPanel/WHM.
 - State store persistido en JSON para onboarding editable.
 - Panel técnico en `/admin`.
 - Admin API en `/api/admin/*`.
@@ -17,6 +17,7 @@ Este servicio consolida dos cosas en una sola capa:
   - `POST /register-site`
   - `PATCH /sites/:site_id`
   - `DELETE /sites/:site_id`
+- Registro administrativo de cuentas cPanel/WHM y validación de tokens.
 
 ## Arquitectura
 
@@ -25,6 +26,7 @@ Este servicio consolida dos cosas en una sola capa:
 - `src/lib/state.ts`: estado persistido del hub.
 - `src/notion.ts`: adaptador Notion por alias.
 - `src/wordpress.ts`: adaptador WordPress compatible con el bridge actual.
+- `src/cpanel.ts`: adaptador HTTPS para UAPI de cPanel y API 1 de WHM.
 - `src/admin/*`: UI y API técnica de onboarding.
 
 ## Variables de entorno
@@ -46,6 +48,7 @@ Bootstrap opcional:
 
 - `NOTION_CONNECTIONS_JSON`
 - `WORDPRESS_BOOTSTRAP_SITES_FILE`
+- Las credenciales cPanel/WHM se registran desde el panel y se persisten en el volumen privado de `HUB_STATE_FILE`.
 - `NOTION_OAUTH_CLIENT_ID`
 - `NOTION_OAUTH_CLIENT_SECRET`
 - `NOTION_OAUTH_REDIRECT_URI`
@@ -58,6 +61,27 @@ Bootstrap opcional:
 - `POST /mcp`
 - `GET /sites`
 - `POST /register-site`
+
+## cPanel y WHM
+
+El conector admite dos modalidades:
+
+- `cpanel_token`, con un token creado dentro de cada cuenta cPanel, normalmente en el puerto `2083`.
+- `whm_token`, con un token reseller/root creado en WHM, normalmente en el puerto `2087`.
+
+La administración se hace desde estas rutas protegidas por sesión de administrador:
+
+- `GET /api/admin/connectors/cpanel/accounts`
+- `POST /api/admin/connectors/cpanel/accounts`
+- `PATCH /api/admin/connectors/cpanel/accounts/:accountId`
+- `DELETE /api/admin/connectors/cpanel/accounts/:accountId`
+- `POST /api/admin/connectors/cpanel/accounts/:accountId/validate`
+
+Las herramientas MCP expuestas son `cpanel_list_accounts`, `cpanel_check_account`, `cpanel_list_mailboxes`, `cpanel_create_mailbox`, `cpanel_delete_mailbox` y `whm_list_accounts`.
+
+Por seguridad, los listados nunca devuelven el token. Se recomienda crear tokens con permisos mínimos, expiración y sin acceso global cuando el proveedor lo permita. No se deben registrar contraseñas de cPanel ni tokens WHM en el chat.
+
+La integración usa UAPI para operaciones cPanel y API 1 para WHM. Referencias: [UAPI de cPanel](https://api.docs.cpanel.net/cpanel/introduction), [tokens de WHM](https://api.docs.cpanel.net/whm/tokens), [Email/list_pops](https://api.docs.cpanel.net/specifications/cpanel.openapi/email-accounts/email-list_pops).
 
 ## Panel técnico
 

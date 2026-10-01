@@ -1,4 +1,4 @@
-export type ConnectorKind = "notion" | "wordpress";
+export type ConnectorKind = "notion" | "wordpress" | "cpanel";
 export type ConnectorStatus = "enabled" | "disabled";
 export type ConnectorHealth = "ok" | "error" | "unknown";
 export type WordPressEnvironment = "production" | "staging" | "development";
@@ -83,7 +83,55 @@ export type WordPressConnectorRecord = {
   updated_at: string;
 };
 
-export type ConnectorRecord = NotionConnectorRecord | WordPressConnectorRecord;
+export type CPanelAuthMode = "cpanel_token" | "whm_token";
+
+export type CPanelAccountRecord = {
+  account_id: string;
+  account_label: string;
+  auth_mode: CPanelAuthMode;
+  host: string;
+  username: string;
+  domain?: string;
+  port: number;
+  token: string;
+  notes: string[];
+  updated_at: string;
+  source: "manual";
+};
+
+export type CPanelAccountEntity = {
+  entity_id: string;
+  label: string;
+  status: ConnectorStatus;
+  hidden: boolean;
+  disabled: boolean;
+  tags: string[];
+  notes: string[];
+  group?: string;
+  account: CPanelAccountRecord;
+  last_check_at?: string;
+  last_error?: string | null;
+  last_health?: ConnectorHealth;
+};
+
+export type CPanelConnectorRecord = {
+  connector_id: "cpanel";
+  kind: "cpanel";
+  label: string;
+  status: ConnectorStatus;
+  auth_mode: "api_token";
+  capabilities: string[];
+  config: {
+    registration_enabled: boolean;
+    blocked_account_ids: string[];
+  };
+  entities: CPanelAccountEntity[];
+  last_check_at?: string;
+  last_error?: string | null;
+  updated_at: string;
+};
+
+export type ConnectorRecord = NotionConnectorRecord | WordPressConnectorRecord | CPanelConnectorRecord;
 
 export type HubState = {
   version: 1;

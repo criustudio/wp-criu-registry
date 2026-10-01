@@ -7,6 +7,7 @@ import { StateStore } from "./lib/state.js";
 import { createServer } from "./mcp-server.js";
 import { NotionHub } from "./notion.js";
 import { WordPressHub } from "./wordpress.js";
+import { CPanelHub } from "./cpanel.js";
 
 const config = loadConfig();
 const app = createMcpExpressApp({
@@ -15,6 +16,7 @@ const app = createMcpExpressApp({
 });
 const store = new StateStore(config);
 const wordPressHub = new WordPressHub(store);
+const cPanelHub = new CPanelHub(store);
 
 function getNotionHub(options?: { includeDisabled?: boolean }) {
   return new NotionHub(store.getNotionConnectors({ includeDisabled: options?.includeDisabled }), {
@@ -60,7 +62,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-registerAdminRoutes(app, { config, store, getNotionHub, wordPressHub });
+registerAdminRoutes(app, { config, store, getNotionHub, wordPressHub, cPanelHub });
 registerWordPressRegistryRoutes(app, { config, wordPressHub });
 
 app.get("/", (_req, res) => {
@@ -92,6 +94,7 @@ app.get("/health", (_req, res) => {
       total: connectors.length,
       notion: connectors.filter((connector) => connector.kind === "notion").length,
       wordpress_sites: store.getWordPressConnector().entities.length,
+      cpanel_accounts: store.getCPanelConnector().entities.length,
     },
     defaults_in_use: {
       admin_api_key: config.adminApiKey === "dev-admin-key",
@@ -102,7 +105,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.post("/mcp", authMiddleware, async (req, res) => {
-  const server = createServer(config, { store, getNotionHub, wordPressHub });
+  const server = createServer(config, { store, getNotionHub, wordPressHub, cPanelHub });
 
   try {
     const transport = new StreamableHTTPServerTransport({

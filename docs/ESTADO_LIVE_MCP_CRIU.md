@@ -100,6 +100,17 @@ Para meter una plataforma nueva en este hub, la regla práctica es:
 
 Si la plataforma no tiene API ni bridge viable, no vale la pena forzarla dentro del hub.
 
+## 8.1. cPanel / WHM
+
+La ampliación cPanel/WHM está implementada en el código del hub y mantiene separado el estado de WordPress:
+
+- `cpanel_token`: token de una cuenta cPanel, normalmente por `2083`.
+- `whm_token`: token reseller/root de WHM, normalmente por `2087`.
+- API administrativa: `/api/admin/connectors/cpanel/accounts`.
+- Herramientas MCP: `cpanel_list_accounts`, `cpanel_check_account`, `cpanel_list_mailboxes`, `cpanel_create_mailbox`, `cpanel_delete_mailbox` y `whm_list_accounts`.
+
+Los tokens se almacenan en el volumen privado del hub y se omiten de las respuestas de listado. La integración todavía requiere registrar cada credencial real y validar sus permisos antes de considerarla operativa en producción.
+
 ## 9. Qué falta para tener Notion realmente operativo
 
 La base ya está lista, pero hace falta configurar la integración pública de Notion en EasyPanel:

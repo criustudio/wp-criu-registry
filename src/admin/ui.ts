@@ -678,6 +678,7 @@ export function renderAdminPage(): string {
           <nav class="surface tab-nav" aria-label="Areas del panel">
             <button class="tab-button active" data-tab="notion" aria-selected="true">Notion</button>
             <button class="tab-button" data-tab="wordpress" aria-selected="false">WordPress</button>
+            <button class="tab-button" data-tab="cpanel" aria-selected="false">cPanel / WHM</button>
             <button class="tab-button" data-tab="other" aria-selected="false">Otros</button>
           </nav>
 
@@ -714,6 +715,24 @@ export function renderAdminPage(): string {
                 <div class="message warn">El bridge actual sigue funcionando igual. Esta vista solo organiza mejor la gestión operativa y las acciones.</div>
               </div>
               <div id="wordpress-table" class="scroll-area"></div>
+            </section>
+          </div>
+
+          <div class="tab-panel" data-panel="cpanel">
+            <section class="surface registry-shell">
+              <div class="surface-header">
+                <div class="section-head">
+                  <div class="section-copy">
+                    <h2>Cuentas cPanel / WHM</h2>
+                    <p class="subtle">Registra tokens API separados por cuenta o una credencial WHM reseller. Los tokens nunca se muestran en los listados.</p>
+                  </div>
+                  <div class="toolbar">
+                    <button id="open-cpanel-create" class="primary">Nueva cuenta cPanel</button>
+                  </div>
+                </div>
+                <div class="message warn">Empieza con permisos de lectura y valida cada token antes de habilitar creación o eliminación de buzones.</div>
+              </div>
+              <div id="cpanel-table" class="scroll-area"></div>
             </section>
           </div>
 
@@ -848,6 +867,30 @@ export function renderAdminPage(): string {
                 <textarea id="wp-metadata-notes" placeholder="Una nota por línea"></textarea>
               </div>
             </div>
+
+            <div id="drawer-cpanel-fields" class="stack hidden">
+              <div class="drawer-note">Usa un token API, nunca la contraseña principal. Para una cuenta individual usa cPanel/2083; para administrar varias cuentas usa WHM/2087 con permisos mínimos.</div>
+              <div class="split-row">
+                <label class="field"><span>account_id</span><input id="cpanel-account-id" /></label>
+                <label class="field"><span>Label</span><input id="cpanel-account-label" /></label>
+              </div>
+              <div class="split-row">
+                <label class="field"><span>Tipo de token</span><select id="cpanel-auth-mode"><option value="cpanel_token">cPanel token</option><option value="whm_token">WHM token</option></select></label>
+                <label class="field"><span>Puerto</span><input id="cpanel-port" type="number" value="2083" /></label>
+              </div>
+              <div class="split-row">
+                <label class="field"><span>Host</span><input id="cpanel-host" placeholder="host5.bienvenidohosting.com" /></label>
+                <label class="field"><span>Usuario API</span><input id="cpanel-username" /></label>
+              </div>
+              <div class="field"><span>Dominio principal (opcional para WHM)</span><input id="cpanel-domain" /></div>
+              <div class="field"><span>API token</span><input id="cpanel-token" type="password" placeholder="Déjalo vacío al editar para conservarlo" /></div>
+              <div class="field"><span>Notas de la cuenta</span><textarea id="cpanel-account-notes" placeholder="Una nota por línea"></textarea></div>
+              <div class="split-row">
+                <label class="field"><span>Grupo</span><input id="cpanel-group" /></label>
+                <label class="field"><span>Tags</span><input id="cpanel-tags" placeholder="separados por línea" /></label>
+              </div>
+              <div class="field"><span>Notas internas</span><textarea id="cpanel-metadata-notes" placeholder="Una nota por línea"></textarea></div>
+            </div>
           </div>
 
           <div class="drawer-actions">
@@ -888,6 +931,7 @@ export function renderAdminPage(): string {
       const notionFields = document.getElementById("drawer-notion-fields");
       const notionEditFields = document.getElementById("notion-edit-fields");
       const wordpressFields = document.getElementById("drawer-wordpress-fields");
+      const cPanelFields = document.getElementById("drawer-cpanel-fields");
 
       function showMessage(element, message, tone) {
         if (!message) {
@@ -964,6 +1008,15 @@ export function renderAdminPage(): string {
         return connector?.entities?.find((entity) => entity.site.site_id === siteId);
       }
 
+      function getCPanelConnector() {
+        return state.connectors.find((connector) => connector.kind === "cpanel");
+      }
+
+      function getCPanelEntity(accountId) {
+        const connector = getCPanelConnector();
+        return connector?.entities?.find((entity) => entity.account.account_id === accountId);
+      }
+
       function resetDrawerForms() {
         document.getElementById("notion-alias").value = "";
         document.getElementById("notion-label").value = "";
@@ -981,6 +1034,18 @@ export function renderAdminPage(): string {
         document.getElementById("wp-group").value = "";
         document.getElementById("wp-tags").value = "";
         document.getElementById("wp-metadata-notes").value = "";
+        document.getElementById("cpanel-account-id").value = "";
+        document.getElementById("cpanel-account-label").value = "";
+        document.getElementById("cpanel-auth-mode").value = "cpanel_token";
+        document.getElementById("cpanel-host").value = "";
+        document.getElementById("cpanel-username").value = "";
+        document.getElementById("cpanel-domain").value = "";
+        document.getElementById("cpanel-port").value = "2083";
+        document.getElementById("cpanel-token").value = "";
+        document.getElementById("cpanel-account-notes").value = "";
+        document.getElementById("cpanel-group").value = "";
+        document.getElementById("cpanel-tags").value = "";
+        document.getElementById("cpanel-metadata-notes").value = "";
         document.getElementById("notion-alias").disabled = false;
       }
 
@@ -1000,6 +1065,7 @@ export function renderAdminPage(): string {
 
         notionFields.classList.toggle("hidden", kind !== "notion");
         wordpressFields.classList.toggle("hidden", kind !== "wordpress");
+        cPanelFields.classList.toggle("hidden", kind !== "cpanel");
         notionEditFields.classList.toggle("hidden", !(kind === "notion" && mode === "edit"));
 
         if (kind === "notion") {
@@ -1046,6 +1112,31 @@ export function renderAdminPage(): string {
           }
         }
 
+        if (kind === "cpanel") {
+          drawerTitle.textContent = mode === "create" ? "Nueva cuenta cPanel / WHM" : "Editar cuenta cPanel / WHM";
+          drawerSubtitle.textContent = mode === "create"
+            ? "Registra un token API y valida la conexión antes de usar operaciones de correo."
+            : "Actualiza metadata o reemplaza el token dejando el campo vacío para conservarlo.";
+          drawerSubmit.textContent = mode === "create" ? "Registrar cuenta" : "Actualizar cuenta";
+
+          if (mode === "edit") {
+            const entity = getCPanelEntity(key);
+            const account = entity?.account;
+            document.getElementById("cpanel-account-id").value = account?.account_id || "";
+            document.getElementById("cpanel-account-label").value = account?.account_label || "";
+            document.getElementById("cpanel-auth-mode").value = account?.auth_mode || "cpanel_token";
+            document.getElementById("cpanel-host").value = account?.host || "";
+            document.getElementById("cpanel-username").value = account?.username || "";
+            document.getElementById("cpanel-domain").value = account?.domain || "";
+            document.getElementById("cpanel-port").value = String(account?.port || 2083);
+            document.getElementById("cpanel-account-notes").value = joinLines(account?.notes);
+            document.getElementById("cpanel-group").value = entity?.group || "";
+            document.getElementById("cpanel-tags").value = joinLines(entity?.tags);
+            document.getElementById("cpanel-metadata-notes").value = joinLines(entity?.notes);
+            document.getElementById("cpanel-account-id").disabled = true;
+          }
+        }
+
         drawer.classList.remove("hidden");
         drawerBackdrop.classList.remove("hidden");
         drawer.setAttribute("aria-hidden", "false");
@@ -1055,11 +1146,13 @@ export function renderAdminPage(): string {
         const wordpress = getWordPressConnector();
         const notionEnabled = state.connectors.filter((connector) => connector.kind === "notion" && connector.status === "enabled").length;
         const wordpressSites = wordpress?.entities?.length || 0;
+        const cPanelAccounts = getCPanelConnector()?.entities?.length || 0;
         const healthWarnings = state.connectors.filter((connector) => connector.last_error).length;
         document.getElementById("metrics").innerHTML = [
           ["Conectores", String(state.connectors.length)],
           ["Notion activos", String(notionEnabled)],
           ["Sitios WordPress", String(wordpressSites)],
+          ["Cuentas cPanel", String(cPanelAccounts)],
           ["Alertas", String(healthWarnings)],
         ].map(function(metric) {
           return '<div class="metric"><span class="subtle">' + metric[0] + "</span><strong>" + metric[1] + "</strong></div>";
@@ -1071,7 +1164,9 @@ export function renderAdminPage(): string {
         container.innerHTML = state.connectors.map(function(connector) {
           const summary = connector.kind === "wordpress"
             ? "Sitios: " + (connector.entities?.length || 0)
-            : "Alias: " + escapeHtml(connector.config.alias) + (connector.config.workspaceName ? " · " + escapeHtml(connector.config.workspaceName) : "");
+            : connector.kind === "cpanel"
+              ? "Cuentas: " + (connector.entities?.length || 0)
+              : "Alias: " + escapeHtml(connector.config.alias) + (connector.config.workspaceName ? " · " + escapeHtml(connector.config.workspaceName) : "");
           const error = connector.last_error ? '<div class="message danger">' + escapeHtml(connector.last_error) + "</div>" : "";
           return '<article class="mini-card">'
             + '<div class="row" style="justify-content:space-between"><strong>' + escapeHtml(connector.label) + '</strong><span class="pill">' + escapeHtml(connector.kind) + "</span></div>"
@@ -1161,6 +1256,43 @@ export function renderAdminPage(): string {
         container.innerHTML = '<div class="registry-shell">' + head + '<div class="registry-list">' + rows + "</div></div>";
       }
 
+      function renderCPanelTable() {
+        const connector = getCPanelConnector();
+        const accounts = connector?.entities || [];
+        const container = document.getElementById("cpanel-table");
+        if (!accounts.length) {
+          container.innerHTML = '<div class="empty-state">No hay cuentas cPanel registradas. Usa <strong>Nueva cuenta cPanel</strong> para dar de alta un token.</div>';
+          return;
+        }
+
+        const rows = accounts.map(function(entity) {
+          const account = entity.account;
+          const metadata = [
+            entity.hidden ? "hidden" : null,
+            entity.disabled ? "disabled" : null,
+            entity.group ? "group:" + entity.group : null,
+          ].filter(Boolean).join(" · ") || "sin flags";
+          const health = entity.last_health || "unknown";
+          const healthTone = health === "ok" ? "ok" : (health === "unknown" ? "off" : "error");
+          const error = entity.last_error ? '<div class="message danger">' + escapeHtml(entity.last_error) + "</div>" : "";
+          return '<article class="registry-row">'
+            + '<div class="registry-grid wordpress">'
+            + '<div class="cell"><span class="caption">Cuenta</span><strong>' + escapeHtml(account.account_id) + '</strong><span class="subtle">' + escapeHtml(account.account_label || "") + " · " + escapeHtml(account.auth_mode) + "</span></div>"
+            + '<div class="cell"><span class="caption">Servidor</span><code>' + escapeHtml(account.host + ":" + account.port) + '</code><span class="subtle">' + escapeHtml(account.username) + (account.domain ? " · " + escapeHtml(account.domain) : "") + "</span></div>"
+            + '<div class="cell"><span class="caption">Metadata</span><span>' + escapeHtml(metadata) + '</span><span class="subtle">Token configurado · ' + escapeHtml((entity.tags || []).join(", ") || "sin tags") + "</span></div>"
+            + '<div class="cell"><span class="caption">Salud</span><span class="pill ' + healthTone + '">' + escapeHtml(health) + "</span></div>"
+            + "</div>" + error
+            + '<div class="row-footer">'
+            + '<button data-action="validate-cpanel" data-account-id="' + escapeHtml(account.account_id) + '">Check</button>'
+            + '<button data-action="toggle-cpanel-disabled" data-account-id="' + escapeHtml(account.account_id) + '">' + (entity.disabled ? "Activar" : "Desactivar") + "</button>"
+            + '<button data-action="edit-cpanel" data-account-id="' + escapeHtml(account.account_id) + '">Editar</button>'
+            + '<button class="danger" data-action="delete-cpanel" data-account-id="' + escapeHtml(account.account_id) + '">Eliminar</button>'
+            + "</div></article>";
+        }).join("");
+
+        container.innerHTML = '<div class="registry-shell"><div class="registry-list">' + rows + "</div></div>";
+      }
+
       function renderCatalog() {
         document.getElementById("catalog-grid").innerHTML = state.catalog.map(function(entry) {
           return '<article class="mini-card">'
@@ -1231,14 +1363,14 @@ export function renderAdminPage(): string {
 
       function hydrateActiveTab() {
         const hashTab = window.location.hash.replace("#tab-", "").trim();
-        if (hashTab && ["notion", "wordpress", "other"].includes(hashTab)) {
+        if (hashTab && ["notion", "wordpress", "cpanel", "other"].includes(hashTab)) {
           state.activeTab = hashTab;
           return;
         }
 
         try {
           const saved = window.localStorage.getItem("mcpHubActiveTab");
-          if (saved && ["notion", "wordpress", "other"].includes(saved)) {
+          if (saved && ["notion", "wordpress", "cpanel", "other"].includes(saved)) {
             state.activeTab = saved;
           }
         } catch {}
@@ -1253,6 +1385,7 @@ export function renderAdminPage(): string {
         renderNotionOauthStatus();
         renderNotionTable();
         renderWordPressTable();
+        renderCPanelTable();
         renderCatalog();
         renderUsageGuide();
         setActiveTab(state.activeTab);
@@ -1355,6 +1488,39 @@ export function renderAdminPage(): string {
             showMessage(globalMessage, "Sitio WordPress actualizado.", "info");
             await loadOverview();
           }
+
+          if (state.drawer.kind === "cpanel") {
+            const token = document.getElementById("cpanel-token").value.trim();
+            const payload = {
+              account_id: document.getElementById("cpanel-account-id").value.trim(),
+              account_label: document.getElementById("cpanel-account-label").value.trim(),
+              auth_mode: document.getElementById("cpanel-auth-mode").value,
+              host: document.getElementById("cpanel-host").value.trim(),
+              username: document.getElementById("cpanel-username").value.trim(),
+              domain: document.getElementById("cpanel-domain").value.trim() || undefined,
+              port: Number(document.getElementById("cpanel-port").value || 2083),
+              token: token || undefined,
+              account_notes: splitLines(document.getElementById("cpanel-account-notes").value),
+              group: document.getElementById("cpanel-group").value.trim() || undefined,
+              tags: splitLines(document.getElementById("cpanel-tags").value),
+              metadata_notes: splitLines(document.getElementById("cpanel-metadata-notes").value),
+            };
+
+            if (state.drawer.mode === "create" && !token) {
+              throw new Error("El API token es obligatorio para registrar una cuenta.");
+            }
+
+            if (state.drawer.mode === "create") {
+              await api("/api/admin/connectors/cpanel/accounts", { method: "POST", body: payload });
+              closeDrawer();
+              showMessage(globalMessage, "Cuenta cPanel registrada. Ejecuta Check para validar el token.", "info");
+            } else {
+              await api("/api/admin/connectors/cpanel/accounts/" + state.drawer.key, { method: "PATCH", body: payload });
+              closeDrawer();
+              showMessage(globalMessage, "Cuenta cPanel actualizada.", "info");
+            }
+            await loadOverview();
+          }
         } catch (error) {
           showMessage(drawerMessage, error.message, "danger");
         }
@@ -1411,6 +1577,10 @@ export function renderAdminPage(): string {
 
       document.getElementById("open-wordpress-create").addEventListener("click", function() {
         openDrawer("wordpress", "create");
+      });
+
+      document.getElementById("open-cpanel-create").addEventListener("click", function() {
+        openDrawer("cpanel", "create");
       });
 
       document.body.addEventListener("click", async function(event) {
@@ -1473,6 +1643,31 @@ export function renderAdminPage(): string {
             if (window.confirm("Eliminar este sitio WordPress del registry y bloquear su auto-registro?")) {
               await api("/api/admin/connectors/wordpress/sites/" + target.dataset.siteId, { method: "DELETE" });
               showMessage(globalMessage, "Sitio eliminado y bloqueado para auto-registro hasta que lo vuelvas a crear manualmente.", "info");
+            }
+          }
+
+          if (action === "validate-cpanel") {
+            await api("/api/admin/connectors/cpanel/accounts/" + target.dataset.accountId + "/validate", { method: "POST" });
+            showMessage(globalMessage, "Cuenta cPanel validada.", "info");
+          }
+
+          if (action === "toggle-cpanel-disabled") {
+            const entity = getCPanelEntity(target.dataset.accountId);
+            await api("/api/admin/connectors/cpanel/accounts/" + target.dataset.accountId, {
+              method: "PATCH",
+              body: { disabled: !entity.disabled },
+            });
+          }
+
+          if (action === "edit-cpanel") {
+            openDrawer("cpanel", "edit", target.dataset.accountId);
+            return;
+          }
+
+          if (action === "delete-cpanel") {
+            if (window.confirm("Eliminar esta credencial cPanel del hub? No elimina la cuenta en el servidor.")) {
+              await api("/api/admin/connectors/cpanel/accounts/" + target.dataset.accountId, { method: "DELETE" });
+              showMessage(globalMessage, "Credencial cPanel eliminada del hub.", "info");
             }
           }
 

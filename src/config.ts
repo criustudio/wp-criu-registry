@@ -15,7 +15,7 @@ const bootstrapNotionSchema = z.object({
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   MCP_SERVER_NAME: z.string().min(1).default("criu-mcp-hub"),
-  MCP_SERVER_VERSION: z.string().min(1).default("0.2.0"),
+  MCP_SERVER_VERSION: z.string().min(1).default("0.3.0"),
   MCP_AUTH_MODE: z.enum(["none", "bearer"]).default("none"),
   MCP_API_KEY: z.string().optional(),
   MCP_ALLOWED_HOSTS: z.string().default(""),

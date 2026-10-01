@@ -5,6 +5,10 @@ import type { AppConfig } from "../config.js";
 import type {
   ConnectorRecord,
   ConnectorStatus,
+  CPanelAccountEntity,
+  CPanelAccountRecord,
+  CPanelConnectorRecord,
+  CPanelAuthMode,
   HubState,
   NotionConnectorConfig,
   NotionConnectorRecord,
@@ -15,6 +19,19 @@ import type {
 } from "./types.js";
 
 const wordpressEnvironmentSchema = z.enum(["production", "staging", "development"]);
+
+const cPanelAccountInputSchema = z.object({
+  account_id: z.string().min(1).regex(/^[a-z0-9][a-z0-9_-]*$/i),
+  account_label: z.string().min(1),
+  auth_mode: z.enum(["cpanel_token", "whm_token"]).default("cpanel_token"),
+  host: z.string().min(1),
+  username: z.string().min(1),
+  domain: z.string().min(1).optional(),
+  port: z.coerce.number().int().min(1).max(65535).optional(),
+  token: z.string().min(1),
+  notes: z.array(z.string()).optional(),
+  source: z.literal("manual").optional(),
+});
 
 const notionBootstrapSchema = z.object({
   alias: z.string().min(1),
@@ -71,6 +88,22 @@ export type WordPressSiteMutation = Partial<{
   wp_version: string | null;
   php_version: string | null;
   service_user: string | null;
+}>;
+
+export type CPanelAccountMutation = Partial<{
+  account_label: string;
+  auth_mode: CPanelAuthMode;
+  host: string;
+  username: string;
+  domain: string | null;
+  port: number;
+  token: string;
+  account_notes: string[];
+  metadata_notes: string[];
+  tags: string[];
+  group: string | null;
+  hidden: boolean;
+  disabled: boolean;
 }>;
 
 function nowIso(): string {
@@ -163,6 +196,25 @@ function buildWordPressConnector(): WordPressConnectorRecord {
   };
 }
 
+function buildCPanelConnector(): CPanelConnectorRecord {
+  return {
+    connector_id: "cpanel",
+    kind: "cpanel",
+    label: "cPanel / WHM",
+    status: "enabled",
+    auth_mode: "api_token",
+    capabilities: ["mcp", "api", "cpanel", "whm", "email", "domains", "health"],
+    config: {
+      registration_enabled: true,
+      blocked_account_ids: [],
+    },
+    entities: [],
+    last_check_at: undefined,
+    last_error: null,
+    updated_at: nowIso(),
+  };
+}
+
 function normalizeWordPressSiteRecord(rawSite: unknown, fallbackSource: WordPressSiteRecord["source"]): WordPressSiteRecord {
   const parsed = wordPressSiteInputSchema.parse(rawSite);
   return {
@@ -181,6 +233,23 @@ function normalizeWordPressSiteRecord(rawSite: unknown, fallbackSource: WordPres
   };
 }
 
+function normalizeCPanelAccountRecord(rawAccount: unknown): CPanelAccountRecord {
+  const parsed = cPanelAccountInputSchema.parse(rawAccount);
+  return {
+    account_id: parsed.account_id.trim(),
+    account_label: parsed.account_label.trim(),
+    auth_mode: parsed.auth_mode,
+    host: parsed.host.trim().replace(/^https?:\/\//, "").replace(/\/$/, ""),
+    username: parsed.username.trim(),
+    domain: parsed.domain?.trim().toLowerCase() || undefined,
+    port: parsed.port ?? (parsed.auth_mode === "whm_token" ? 2087 : 2083),
+    token: parsed.token.trim(),
+    notes: dedupeStrings(parsed.notes ?? []),
+    updated_at: nowIso(),
+    source: "manual",
+  };
+}
+
 function buildWordPressEntity(site: WordPressSiteRecord, metadata?: Partial<WordPressSiteEntity>): WordPressSiteEntity {
   return {
     entity_id: site.site_id,
@@ -195,6 +264,26 @@ function buildWordPressEntity(site: WordPressSiteRecord, metadata?: Partial<Word
     last_check_at: metadata?.last_check_at,
     last_error: metadata?.last_error ?? null,
     last_seen_at: metadata?.last_seen_at,
+    last_health: metadata?.last_health ?? "unknown",
+  };
+}
+
+function buildCPanelEntity(
+  account: CPanelAccountRecord,
+  metadata?: Partial<CPanelAccountEntity>,
+): CPanelAccountEntity {
+  return {
+    entity_id: account.account_id,
+    label: account.account_label,
+    status: metadata?.status ?? "enabled",
+    hidden: metadata?.hidden ?? false,
+    disabled: metadata?.disabled ?? false,
+    tags: dedupeStrings(metadata?.tags ?? []),
+    notes: dedupeStrings(metadata?.notes ?? []),
+    group: metadata?.group?.trim() || undefined,
+    account,
+    last_check_at: metadata?.last_check_at,
+    last_error: metadata?.last_error ?? null,
     last_health: metadata?.last_health ?? "unknown",
   };
 }
@@ -323,10 +412,56 @@ export class StateStore {
         wordpressConnector.last_error = connector.last_error ?? null;
         connectorMap.set("wordpress", wordpressConnector);
       }
+
+      if (connector.kind === "cpanel") {
+        const rawEntities = Array.isArray(connector.entities) ? connector.entities : [];
+        const normalizedEntities: CPanelAccountEntity[] = [];
+
+        for (const entity of rawEntities) {
+          try {
+            const rawAccount = (entity as CPanelAccountEntity).account ?? entity;
+            const account = normalizeCPanelAccountRecord(rawAccount);
+            normalizedEntities.push(
+              buildCPanelEntity(account, {
+                status: (entity as CPanelAccountEntity).status === "disabled" ? "disabled" : "enabled",
+                hidden: Boolean((entity as CPanelAccountEntity).hidden),
+                disabled: Boolean((entity as CPanelAccountEntity).disabled),
+                tags: normalizeStringArray((entity as CPanelAccountEntity).tags),
+                notes: normalizeStringArray((entity as CPanelAccountEntity).notes),
+                last_check_at: (entity as CPanelAccountEntity).last_check_at,
+                last_error: (entity as CPanelAccountEntity).last_error ?? null,
+                last_health: (entity as CPanelAccountEntity).last_health ?? "unknown",
+              }),
+            );
+          } catch {
+            continue;
+          }
+        }
+
+        const cPanelConnector = buildCPanelConnector();
+        cPanelConnector.status = connector.status === "disabled" ? "disabled" : "enabled";
+        const rawConfig =
+          connector.config && typeof connector.config === "object"
+            ? (connector.config as Partial<CPanelConnectorRecord["config"]>)
+            : undefined;
+        cPanelConnector.config = {
+          registration_enabled: rawConfig?.registration_enabled !== false,
+          blocked_account_ids: normalizeStringArray(rawConfig?.blocked_account_ids),
+        };
+        cPanelConnector.entities = normalizedEntities;
+        cPanelConnector.updated_at = connector.updated_at ?? nowIso();
+        cPanelConnector.last_check_at = connector.last_check_at;
+        cPanelConnector.last_error = connector.last_error ?? null;
+        connectorMap.set("cpanel", cPanelConnector);
+      }
     }
 
     if (!connectorMap.has("wordpress")) {
       connectorMap.set("wordpress", buildWordPressConnector());
+    }
+
+    if (!connectorMap.has("cpanel")) {
+      connectorMap.set("cpanel", buildCPanelConnector());
     }
 
     for (const bootstrap of this.config.bootstrapNotionConnections) {
@@ -420,8 +555,28 @@ export class StateStore {
     return structuredClone(this.state);
   }
 
-  listConnectors(): ConnectorRecord[] {
-    return structuredClone(this.state.connectors);
+  listConnectors(options?: { includeSecrets?: boolean }): ConnectorRecord[] {
+    const connectors = structuredClone(this.state.connectors);
+    if (options?.includeSecrets) {
+      return connectors;
+    }
+
+    return connectors.map((connector) => {
+      if (connector.kind !== "cpanel") {
+        return connector;
+      }
+
+      return {
+        ...connector,
+        entities: connector.entities.map((entity) => ({
+          ...entity,
+          account: {
+            ...entity.account,
+            token: entity.account.token ? "[configured]" : "",
+          },
+        })),
+      };
+    });
   }
 
   getNotionConnectors(options?: { includeDisabled?: boolean }): NotionConnectorRecord[] {
@@ -618,6 +773,184 @@ export class StateStore {
 
   getWordPressConnector(): WordPressConnectorRecord {
     return structuredClone(this.getWordPressConnectorMutable());
+  }
+
+  private getCPanelConnectorMutable(): CPanelConnectorRecord {
+    const index = this.findConnectorIndex("cpanel");
+    if (index === -1) {
+      const connector = buildCPanelConnector();
+      this.state.connectors.push(connector);
+      return connector;
+    }
+
+    const connector = this.state.connectors[index];
+    if (connector.kind !== "cpanel") {
+      throw new Error("Connector cpanel is corrupted.");
+    }
+
+    return connector;
+  }
+
+  getCPanelConnector(options?: { includeSecrets?: boolean }): CPanelConnectorRecord {
+    const connector = structuredClone(this.getCPanelConnectorMutable());
+    if (!options?.includeSecrets) {
+      connector.entities = connector.entities.map((entity) => ({
+        ...entity,
+        account: {
+          ...entity.account,
+          token: entity.account.token ? "[configured]" : "",
+        },
+      }));
+    }
+    return connector;
+  }
+
+  private normalizeCPanelAccountKey(accountId: string): string {
+    return accountId.trim().toLowerCase();
+  }
+
+  isCPanelAccountBlocked(accountId: string): boolean {
+    const connector = this.getCPanelConnectorMutable();
+    const key = this.normalizeCPanelAccountKey(accountId);
+    return connector.config.blocked_account_ids.some((candidate) => this.normalizeCPanelAccountKey(candidate) === key);
+  }
+
+  blockCPanelAccount(accountId: string): void {
+    const connector = this.getCPanelConnectorMutable();
+    const key = this.normalizeCPanelAccountKey(accountId);
+    if (connector.config.blocked_account_ids.some((candidate) => this.normalizeCPanelAccountKey(candidate) === key)) {
+      return;
+    }
+
+    connector.config.blocked_account_ids.push(accountId.trim());
+    connector.updated_at = nowIso();
+    this.persist();
+  }
+
+  unblockCPanelAccount(accountId: string): void {
+    const connector = this.getCPanelConnectorMutable();
+    const key = this.normalizeCPanelAccountKey(accountId);
+    const next = connector.config.blocked_account_ids.filter((candidate) => this.normalizeCPanelAccountKey(candidate) !== key);
+    if (next.length === connector.config.blocked_account_ids.length) {
+      return;
+    }
+
+    connector.config.blocked_account_ids = next;
+    connector.updated_at = nowIso();
+    this.persist();
+  }
+
+  listCPanelAccounts(options?: { includeHidden?: boolean; includeDisabled?: boolean; includeSecrets?: boolean }): CPanelAccountEntity[] {
+    return this.getCPanelConnectorMutable().entities
+      .filter((entity) => options?.includeHidden || !entity.hidden)
+      .filter((entity) => options?.includeDisabled || !entity.disabled)
+      .map((entity) => {
+        const copy = structuredClone(entity);
+        if (!options?.includeSecrets) {
+          copy.account.token = copy.account.token ? "[configured]" : "";
+        }
+        return copy;
+      });
+  }
+
+  registerCPanelAccount(
+    rawAccount: unknown,
+    metadata?: Partial<Pick<CPanelAccountEntity, "hidden" | "disabled" | "group" | "tags" | "notes">>,
+  ): CPanelAccountEntity {
+    const account = normalizeCPanelAccountRecord(rawAccount);
+    this.unblockCPanelAccount(account.account_id);
+    const connector = this.getCPanelConnectorMutable();
+    const existingIndex = connector.entities.findIndex(
+      (entity) => this.normalizeCPanelAccountKey(entity.entity_id) === this.normalizeCPanelAccountKey(account.account_id),
+    );
+    const existing = existingIndex >= 0 ? connector.entities[existingIndex] : undefined;
+    const next = buildCPanelEntity(account, {
+      status: existing?.status ?? "enabled",
+      hidden: metadata?.hidden ?? existing?.hidden ?? false,
+      disabled: metadata?.disabled ?? existing?.disabled ?? false,
+      tags: metadata?.tags ?? existing?.tags ?? [],
+      notes: metadata?.notes ?? existing?.notes ?? [],
+      last_check_at: existing?.last_check_at,
+      last_error: existing?.last_error ?? null,
+      last_health: existing?.last_health ?? "unknown",
+    });
+
+    if (existingIndex >= 0) {
+      connector.entities[existingIndex] = next;
+    } else {
+      connector.entities.push(next);
+    }
+
+    connector.updated_at = nowIso();
+    this.persist();
+    return structuredClone(next);
+  }
+
+  patchCPanelAccount(accountId: string, patch: CPanelAccountMutation): CPanelAccountEntity {
+    const connector = this.getCPanelConnectorMutable();
+    const entity = connector.entities.find(
+      (candidate) => this.normalizeCPanelAccountKey(candidate.entity_id) === this.normalizeCPanelAccountKey(accountId),
+    );
+    if (!entity) {
+      throw new Error(`cPanel account not found: ${accountId}`);
+    }
+
+    entity.label = patch.account_label?.trim() || entity.label;
+    entity.account.account_label = patch.account_label?.trim() || entity.account.account_label;
+    entity.account.auth_mode = patch.auth_mode ?? entity.account.auth_mode;
+    entity.account.host = patch.host?.trim().replace(/^https?:\/\//, "").replace(/\/$/, "") || entity.account.host;
+    entity.account.username = patch.username?.trim() || entity.account.username;
+    entity.account.domain = patch.domain === null ? undefined : patch.domain?.trim().toLowerCase() || entity.account.domain;
+    entity.account.port = patch.port ?? entity.account.port;
+    entity.account.token = patch.token?.trim() || entity.account.token;
+    entity.account.notes = patch.account_notes ? normalizeStringArray(patch.account_notes) : entity.account.notes;
+    entity.hidden = patch.hidden ?? entity.hidden;
+    entity.disabled = patch.disabled ?? entity.disabled;
+    entity.status = entity.disabled ? "disabled" : "enabled";
+    entity.tags = patch.tags ? normalizeStringArray(patch.tags) : entity.tags;
+    entity.notes = patch.metadata_notes ? normalizeStringArray(patch.metadata_notes) : entity.notes;
+    entity.group = patch.group === null ? undefined : patch.group?.trim() || entity.group;
+    entity.account.updated_at = nowIso();
+    connector.updated_at = nowIso();
+
+    this.persist();
+    return structuredClone(entity);
+  }
+
+  deleteCPanelAccount(accountId: string, options?: { block?: boolean }): void {
+    const connector = this.getCPanelConnectorMutable();
+    const key = this.normalizeCPanelAccountKey(accountId);
+    const next = connector.entities.filter((entity) => this.normalizeCPanelAccountKey(entity.entity_id) !== key);
+    if (next.length === connector.entities.length) {
+      throw new Error(`cPanel account not found: ${accountId}`);
+    }
+
+    connector.entities = next;
+    connector.updated_at = nowIso();
+    this.persist();
+    if (options?.block !== false) {
+      this.blockCPanelAccount(accountId);
+    }
+  }
+
+  setCPanelAccountHealth(
+    accountId: string,
+    payload: { ok: boolean; error?: string | null },
+  ): CPanelAccountEntity {
+    const connector = this.getCPanelConnectorMutable();
+    const entity = connector.entities.find(
+      (candidate) => this.normalizeCPanelAccountKey(candidate.entity_id) === this.normalizeCPanelAccountKey(accountId),
+    );
+    if (!entity) {
+      throw new Error(`cPanel account not found: ${accountId}`);
+    }
+
+    entity.last_health = payload.ok ? "ok" : "error";
+    entity.last_error = payload.ok ? null : payload.error ?? "Unknown error";
+    entity.last_check_at = nowIso();
+    connector.updated_at = nowIso();
+    this.persist();
+    return structuredClone(entity);
   }
 
   private normalizeSiteKey(siteId: string): string {
