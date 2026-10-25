@@ -1,24 +1,24 @@
 # Rediseño del panel Criu Hub MSP
 
-Estado: propuesta visual en Stitch e implementación local de la nueva interfaz en `src/admin/ui.ts`. La publicación se verifica por separado.
+Estado: interfaz implementada en `src/admin/ui.ts` y publicada en `mcp.criu.com.co` desde el commit `9cec60e`. Tras el despliegue, `/admin` sirvió la nueva paleta y `/health` respondió 200 con dos conexiones Notion, 29 sitios Bridge y una cuenta cPanel.
 
-Proyecto Stitch: [Criu Hub MSP — Rediseño integral de panel 2026](https://stitch.withgoogle.com/projects/1241868565145803523) (`projects/1241868565145803523`). Sistema visual: `assets/a658345c54384d29a9fb62d19ce24dd6` (**Technical Editorial MSP**). El proyecto es privado de la cuenta conectada. Las pantallas son prototipos visuales: su texto de ejemplo no sustituye las API ni confirma el estado de producción.
+Proyecto Stitch: [Criu Hub MSP — Rediseño integral de panel 2026](https://stitch.withgoogle.com/projects/1241868565145803523) (`projects/1241868565145803523`). Sistema visual vigente: `assets/14104867470590978583` (**Criu Hub CMS Celeste**). El proyecto es privado de la cuenta conectada. Las pantallas son prototipos visuales: su texto de ejemplo no sustituye las API ni confirma el estado de producción.
 
 | Pantalla recomendada | Recurso Stitch |
 | --- | --- |
-| Acceso al panel | `screens/0af24d02b09e489eb17931db0deac4c6` |
-| Resumen escritorio | `screens/bfccfbaaa9d14381ac7f11654195aece` |
-| Notion escritorio | `screens/424edc39fcb7428fbde336645bf178cf` |
-| WordPress Bridge escritorio | `screens/fb497cc38a1e4aad9d0e6b5d80be60b9` |
-| Webmaster IA escritorio | `screens/12642e3b01534ef3bd3e72cae7876408` |
-| cPanel/WHM escritorio | `screens/3666fecafe6048a88655b0fcf189d164` |
-| Otros escritorio | `screens/56ceaaa4471240dca9a969d19ef0e7c1` |
-| Resumen móvil | `screens/033d1b36868d4de9b7c0eb6c52f4b7ec` |
-| Notion móvil | `screens/fb02b518f513459dab2c19afe0b07505` |
-| WordPress Bridge móvil | `screens/8095e108d4a14ad58cfdf9abf495ad9c` |
-| Webmaster IA móvil | `screens/51ce2355139f4be3969e0a97100eacdc` |
-| cPanel/WHM móvil | `screens/5b1c0c4ca1fb4a038f2a075aca93c9db` |
-| Otros móvil | `screens/bcf1a22859314131b41c0726cbc74ea1` |
+| Acceso al panel | `screens/b475efe5f6cd40af842b18a81e521461` |
+| Resumen escritorio | `screens/bd34c213981c4e158fb7c3f161b31c08` |
+| Notion escritorio | `screens/71684c77991543da9fe84f518931d164` |
+| WordPress Bridge escritorio | `screens/e474cde7ea904a6f93d6f8b871f3a4ed` |
+| Webmaster IA escritorio | `screens/a4ecb08e02e44784ada72f23604c6953` |
+| cPanel/WHM escritorio | `screens/51a0b24bb70d4581bf69cb3b880fa694` |
+| Otros escritorio | `screens/f342e8c4eff9441492138da1a9416659` |
+| Resumen móvil | `screens/7d7f509b4221469abbd1575c900aaf5d` |
+| Notion móvil | `screens/034e5ff705f3497d885c049b8ab00fac` |
+| WordPress Bridge móvil | `screens/070622ce97534cefa1d076d20a268149` |
+| Webmaster IA móvil | `screens/4d1b6fd9365d4b44a7ef54505a5d1f10` |
+| cPanel/WHM móvil | `screens/95eb8780b1a34c16a89bd571c0af588a` |
+| Otros móvil | `screens/218f97164efd4b71a9b7e762b8ae2e92` |
 
 El proyecto conserva las primeras generaciones para comparar cambios. Las trece pantallas de esta tabla son la referencia recomendada.
 
