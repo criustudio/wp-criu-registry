@@ -635,6 +635,7 @@ export function renderAdminPage(): string {
         <div class="stack">
           <h1>mcp-hub admin</h1>
           <p class="subtle">Panel técnico para onboarding de Notion, registry/bridge de WordPress y futuros conectores.</p>
+          <p><a href="/admin/commercial">Abrir Asistente comercial Criu</a></p>
         </div>
         <label class="field">
           <span>ADMIN_API_KEY</span>

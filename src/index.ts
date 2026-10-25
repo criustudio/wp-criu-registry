@@ -8,6 +8,7 @@ import { createServer } from "./mcp-server.js";
 import { NotionHub } from "./notion.js";
 import { WordPressHub } from "./wordpress.js";
 import { CPanelHub } from "./cpanel.js";
+import { registerCommercialRoutes } from "./commercial.js";
 
 const config = loadConfig();
 const app = createMcpExpressApp({
@@ -64,6 +65,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
 
 registerAdminRoutes(app, { config, store, getNotionHub, wordPressHub, cPanelHub });
 registerWordPressRegistryRoutes(app, { config, wordPressHub });
+registerCommercialRoutes(app, config);
 
 app.get("/", (_req, res) => {
   res.json({
