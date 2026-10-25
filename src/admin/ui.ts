@@ -754,6 +754,83 @@ export function renderAdminPage(): string {
         .section-head .toolbar { width: 100%; }
         .section-head .toolbar button { width: 100%; }
       }
+      .page-intro { padding: 8px 0 2px; }
+      .eyebrow { display: block; color: #788594; font-size: 11px; font-weight: 750; letter-spacing: .085em; text-transform: uppercase; }
+      .page-intro h2 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0 8px; font-size: clamp(28px, 3vw, 36px); }
+      .page-intro p { max-width: 72ch; margin: 0; color: var(--muted); }
+      .section-badge { display: inline-flex; align-items: center; padding: 5px 9px; border: 1px solid #c9e4f2; border-radius: 5px; background: #eff8fd; color: var(--accent-strong); font-size: 12px; font-weight: 700; letter-spacing: 0; }
+      .component-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+      .component-heading h3 { margin: 5px 0 0; font-size: 19px; }
+      .flow-card { padding: 24px; }
+      .flow-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+      .flow-step { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-content: start; gap: 7px 10px; min-height: 126px; padding: 17px; border: 1px solid var(--line-strong); border-radius: 7px; background: #f9fbfd; }
+      .flow-step.current { border-color: #aed7ed; background: #edf8fd; }
+      .flow-step b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white; font-size: 13px; }
+      .flow-step strong { align-self: center; font-size: 14px; }
+      .flow-step p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+      .commercial-list { display: grid; gap: 22px; }
+      .commercial-workspace { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr); align-items: start; gap: 22px; }
+      .commercial-main { display: grid; gap: 22px; min-width: 0; }
+      .site-card, .people-card, .invitation-card { padding: 24px; }
+      .site-card > a { display: inline-block; margin-top: 15px; overflow-wrap: anywhere; font-size: 14px; }
+      .site-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 23px; padding: 20px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .site-facts > div { display: grid; gap: 6px; min-width: 0; }
+      .site-facts strong { font-size: 16px; }
+      .site-facts small { color: var(--muted); overflow-wrap: anywhere; }
+      .site-foot { padding-top: 17px; color: var(--muted); font-size: 13px; }
+      .people-empty { padding: 32px 20px; margin-top: 18px; border: 1px dashed var(--line-strong); border-radius: 8px; text-align: center; background: #fafcfd; }
+      .people-empty p { max-width: 38ch; margin: 8px auto 0; color: var(--muted); font-size: 13px; }
+      .person-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+      .person-row > div { display: grid; gap: 4px; }
+      .invitation-card > p { margin: 15px 0 24px; }
+      .permission-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; font-size: 13px; }
+      .permission-list { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      .permission-option { display: flex; align-items: center; gap: 12px; min-height: 45px; padding: 11px 13px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 13px; }
+      .permission-option:last-child { border-bottom: 0; }
+      .permission-option input { flex: none; margin: 0; accent-color: var(--accent); }
+      .invite-button { width: 100%; margin-top: 18px; }
+      .invite-result { display: grid; gap: 9px; margin-top: 12px; overflow-wrap: anywhere; }
+      .invite-result:empty { display: none; }
+      .invite-result input { width: 100%; }
+      .brand-lockup { display: flex; align-items: center; gap: 12px; }
+      .brand-mark { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 7px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; }
+      .tab-nav { padding-top: 26px; }
+      .tab-button { min-height: 45px; padding-left: 18px; }
+      .tab-button::before { display: inline-grid; place-items: center; width: 22px; margin-right: 10px; color: #6d7a88; font-size: 17px; line-height: 1; }
+      .tab-button[data-tab="summary"]::before { content: "▦"; }
+      .tab-button[data-tab="notion"]::before { content: "◫"; }
+      .tab-button[data-tab="wordpress"]::before { content: "⇄"; }
+      .tab-button[data-tab="webmaster"]::before { content: "✧"; }
+      .tab-button[data-tab="cpanel"]::before { content: "▤"; }
+      .tab-button[data-tab="other"]::before { content: "⋯"; }
+      .tab-button.active::before { color: var(--accent); }
+      .hero-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .metric-link { display: grid; justify-items: start; gap: 10px; width: 100%; min-height: 148px; padding: 20px; text-align: left; }
+      .metric-link strong { font-size: 36px; }
+      .metric-link small { color: var(--accent-strong); font-size: 12px; font-weight: 650; }
+      .summary-overview { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(270px, .8fr); gap: 20px; align-items: start; }
+      .summary-overview > .surface { padding: 22px; min-width: 0; }
+      .summary-rows { margin-top: 6px; }
+      .summary-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; min-height: 70px; border-bottom: 1px solid var(--line); }
+      .summary-row:last-child { border-bottom: 0; }
+      .summary-row > div { display: grid; gap: 4px; min-width: 0; }
+      .summary-row small { color: var(--muted); overflow-wrap: anywhere; }
+      .summary-type { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 7px; background: #e7f5fc; color: var(--accent-strong); font-size: 11px; font-weight: 800; }
+      .summary-type.bridge { background: #edf0f7; color: #526881; }
+      .summary-fact { display: flex; justify-content: space-between; gap: 10px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+      .summary-side > p { margin: 18px 0 0; font-size: 12px; }
+      .list-toolbar { display: flex; justify-content: space-between; align-items: end; gap: 16px; padding-top: 18px; border-top: 1px solid var(--line); }
+      .list-toolbar label { display: grid; gap: 6px; width: min(360px, 100%); color: var(--muted); font-size: 12px; font-weight: 650; }
+      .list-toolbar input { width: 100%; min-height: 40px; background: #fafcfd; }
+      .list-toolbar > span { padding-bottom: 9px; color: var(--muted); font-size: 12px; }
+      .registry-shell > .registry-head { background: #f2f5f8; color: #586878; font-size: 11px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+      .registry-row[hidden] { display: none; }
+      .registry-row .cell strong { font-size: 14px; }
+      .registry-row .cell .caption { color: #7d8a97; font-size: 10px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+      .row-footer { justify-content: flex-end; }
+      @media (max-width: 1100px) { .commercial-workspace { grid-template-columns: 1fr; } }
+      @media (max-width: 1100px) { .summary-overview { grid-template-columns: 1fr; } }
+      @media (max-width: 760px) { .flow-grid { grid-template-columns: 1fr; } .flow-step { min-height: 0; } .site-facts { grid-template-columns: 1fr; } .component-heading { flex-wrap: wrap; } .hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .brand-mark { display: none; } .summary-row { grid-template-columns: 34px minmax(0, 1fr) auto; } .summary-row button { grid-column: 2 / -1; justify-self: start; margin-bottom: 10px; } }
     </style>
   </head>
   <body>
@@ -775,10 +852,7 @@ export function renderAdminPage(): string {
     <div id="app-shell" class="hidden">
       <header class="shell app-header">
         <div class="row" style="justify-content:space-between; align-items:start;">
-          <div class="stack">
-            <h1>Criu Hub <span>MSP</span></h1>
-            <p class="subtle">Panel de conectores</p>
-          </div>
+          <div class="brand-lockup"><span class="brand-mark">CH</span><div class="stack"><h1>Criu Hub <span>MSP</span></h1><p class="subtle">Espacio principal · Operativo</p></div></div>
           <div class="toolbar">
             <button id="menu-toggle" class="soft mobile-only" type="button" aria-controls="panel-nav" aria-expanded="false">Menú</button>
             <button id="refresh-all" class="soft" aria-label="Refrescar">Refrescar</button>
@@ -801,18 +875,13 @@ export function renderAdminPage(): string {
           </nav>
 
           <div class="tab-panel active" data-panel="summary">
-            <section class="surface hero">
-              <div class="hero-top">
-                <div class="stack">
-                  <h2>Resumen</h2>
-                  <p class="subtle">Conexiones registradas en el Hub. Los recuentos no indican por sí solos el estado de salud.</p>
-                </div>
-              </div>
-              <div class="hero-grid" id="metrics"></div>
-            </section>
+            <div class="page-intro"><span class="eyebrow">CRIU PRINCIPAL / RESUMEN</span><h2>Resumen</h2><p>Conexiones y sitios registrados en el Hub.</p></div>
+            <div class="hero-grid" id="metrics"></div>
+            <div id="summary-overview" class="summary-overview"></div>
           </div>
 
           <div class="tab-panel" data-panel="notion">
+            <div class="page-intro"><span class="eyebrow">CRIU PRINCIPAL / NOTION</span><h2>Notion</h2><p>Espacios de trabajo autorizados y estado de sus conexiones.</p></div>
             <section class="surface registry-shell">
               <div class="surface-header">
                 <div class="section-head">
@@ -825,12 +894,14 @@ export function renderAdminPage(): string {
                   </div>
                 </div>
                 <div id="notion-oauth-status" class="message info"></div>
+                <div class="list-toolbar"><label>Buscar conexión<input type="search" data-list-filter="notion-table" placeholder="Alias o espacio de trabajo" /></label><span>Conexiones registradas</span></div>
               </div>
               <div id="notion-table" class="scroll-area"></div>
             </section>
           </div>
 
           <div class="tab-panel" data-panel="wordpress">
+            <div class="page-intro"><span class="eyebrow">CRIU PRINCIPAL / WORDPRESS BRIDGE</span><h2>WordPress Bridge</h2><p>Administra los sitios Bridge, sus accesos y la validación de cada conexión.</p></div>
             <section class="surface registry-shell">
               <div class="surface-header">
                 <div class="section-head">
@@ -844,27 +915,21 @@ export function renderAdminPage(): string {
                   </div>
                 </div>
                 <div class="message info">Los sitios Bridge se administran por separado de Webmaster IA.</div>
+                <div class="list-toolbar"><label>Buscar sitio<input type="search" data-list-filter="wordpress-table" placeholder="Nombre, URL o ID" /></label><span>Sitios registrados</span></div>
               </div>
               <div id="wordpress-table" class="scroll-area"></div>
             </section>
           </div>
 
           <div class="tab-panel" data-panel="webmaster">
-            <section class="surface registry-shell">
-              <div class="surface-header">
-                <div class="section-head">
-                  <div class="section-copy">
-                    <h2>Webmaster IA</h2>
-                    <p class="subtle">Instala Criu Asistente Comercial en la web y pulsa Registrar con Criu. Cada sitio aparece aquí con una conexión independiente de WordPress Bridge.</p>
-                  </div>
-                </div>
-                <div id="webmaster-bot-status" class="message info"></div>
-              </div>
-              <div id="webmaster-sites" class="registry-list"></div>
-            </section>
+            <div class="page-intro"><div class="eyebrow">Criu Principal / Webmaster IA</div><h2>Webmaster IA <span class="section-badge">Gestión centralizada</span></h2><p>Administra las webs comerciales y el acceso de sus usuarios de Telegram desde el Hub.</p></div>
+            <section class="surface flow-card"><div class="component-heading"><div><span class="eyebrow">FLUJO OPERATIVO</span><h3>Conectar una web comercial</h3></div><span class="subtle">Tres pasos</span></div><div class="flow-grid"><div class="flow-step"><b>1</b><strong>Instala el plugin</strong><p>Criu Asistente Comercial en el WordPress del cliente.</p></div><div class="flow-step"><b>2</b><strong>Registra con Criu</strong><p>Activa la conexión desde el administrador del sitio.</p></div><div class="flow-step current"><b>3</b><strong>Crea una invitación</strong><p>Desde aquí, autoriza a la persona y envíale su enlace de Telegram.</p></div></div></section>
+            <div id="webmaster-bot-status" class="message info"></div>
+            <div id="webmaster-sites" class="commercial-list"></div>
           </div>
 
           <div class="tab-panel" data-panel="cpanel">
+            <div class="page-intro"><span class="eyebrow">CRIU PRINCIPAL / CPANEL</span><h2>cPanel / WHM</h2><p>Cuentas y servidores registrados con el Hub.</p></div>
             <section class="surface registry-shell">
               <div class="surface-header">
                 <div class="section-head">
@@ -877,12 +942,14 @@ export function renderAdminPage(): string {
                   </div>
                 </div>
                 <div class="message warn">Empieza con permisos de lectura y valida cada token antes de habilitar creación o eliminación de buzones.</div>
+                <div class="list-toolbar"><label>Buscar cuenta<input type="search" data-list-filter="cpanel-table" placeholder="Cuenta, servidor o dominio" /></label><span>Cuentas registradas</span></div>
               </div>
               <div id="cpanel-table" class="scroll-area"></div>
             </section>
           </div>
 
           <div class="tab-panel" data-panel="other">
+            <div class="page-intro"><span class="eyebrow">CRIU PRINCIPAL / OTROS</span><h2>Otros conectores</h2><p>Información técnica y conectores disponibles.</p></div>
             <div class="layout-other">
               <section class="surface stack">
                 <div class="section-head">
@@ -1305,15 +1372,21 @@ export function renderAdminPage(): string {
         const cPanelAccounts = getCPanelConnector()?.entities?.length || 0;
         const healthWarnings = state.connectors.filter((connector) => connector.last_error).length;
         document.getElementById("metrics").innerHTML = [
-          ["Conectores", String(state.connectors.length)],
-          ["Notion activos", String(notionEnabled)],
-          ["Sitios WordPress", String(wordpressSites)],
-          ["Webmaster IA", String(webmasterSites)],
-          ["Cuentas cPanel", String(cPanelAccounts)],
-          ["Alertas", String(healthWarnings)],
+          ["Notion activos", String(notionEnabled), "notion"],
+          ["WordPress Bridge", String(wordpressSites), "wordpress"],
+          ["Webmaster IA", String(webmasterSites), "webmaster"],
+          ["Cuentas cPanel", String(cPanelAccounts), "cpanel"],
         ].map(function(metric) {
-          return '<div class="metric"><span class="subtle">' + metric[0] + "</span><strong>" + metric[1] + "</strong></div>";
+          return '<button class="metric metric-link" data-tab="' + metric[2] + '"><span class="subtle">' + metric[0] + '</span><strong>' + metric[1] + '</strong><small>Ver conexiones →</small></button>';
         }).join("");
+        const commercial = state.commercial.sites || [];
+        const rows = commercial.map(function(site) {
+          return '<div class="summary-row"><span class="summary-type">IA</span><div><strong>' + escapeHtml(site.label) + '</strong><small>' + escapeHtml(site.url) + '</small></div><span class="pill ' + (site.status === "active" ? "ok" : "off") + '">' + escapeHtml(site.status) + '</span><button data-tab="webmaster">Ver sitio</button></div>';
+        }).concat((wordpress?.entities || []).slice(0, 5).map(function(entity) {
+          return '<div class="summary-row"><span class="summary-type bridge">WP</span><div><strong>' + escapeHtml(entity.site.site_label || entity.site.site_id) + '</strong><small>' + escapeHtml(entity.site.base_url || entity.site.site_id) + '</small></div><span class="pill ' + (entity.last_health === "ok" ? "ok" : "off") + '">' + escapeHtml(entity.last_health || "unknown") + '</span><button data-tab="wordpress">Ver sitio</button></div>';
+        })).join("");
+        document.getElementById("summary-overview").innerHTML = '<section class="surface"><div class="component-heading"><div><span class="eyebrow">SITIOS Y CONEXIONES</span><h3>Acceso rápido</h3></div><span class="subtle">' + String(commercial.length + wordpressSites) + ' sitios registrados</span></div><div class="summary-rows">'
+          + (rows || '<div class="empty-state">Todavía no hay sitios registrados.</div>') + '</div></section><section class="surface summary-side"><div class="component-heading"><div><span class="eyebrow">ESTADO DEL HUB</span><h3>Vista general</h3></div></div><div class="summary-fact"><span>Conectores configurados</span><strong>' + String(state.connectors.length) + '</strong></div><div class="summary-fact"><span>Con errores registrados</span><strong>' + String(healthWarnings) + '</strong></div><p class="subtle">Los recuentos reflejan registros. Usa la validación de cada conector para comprobar su estado actual.</p></section>';
       }
 
       function renderConnectorOverview() {
@@ -1444,27 +1517,24 @@ export function renderAdminPage(): string {
         }
         container.innerHTML = sites.map(function(site) {
           const active = site.status === "active";
+          const siteUrl = /^https?:\/\//i.test(site.url || "") ? site.url : "";
           const people = (site.users || []).map(function(person) {
-            return '<div class="row" style="justify-content:space-between;margin:8px 0"><span>'
-              + escapeHtml(person.firstName || "Usuario") + ' · Telegram ' + escapeHtml(person.telegramId)
-              + ' · ' + escapeHtml((person.permissions || []).map(function(item) { return webmasterPermissions[item] || item; }).join(", "))
-              + '</span><button data-action="webmaster-revoke" data-site-id="' + escapeHtml(site.id)
-              + '" data-telegram-id="' + escapeHtml(person.telegramId) + '">Revocar</button></div>';
+            return '<div class="person-row"><div><strong>' + escapeHtml(person.firstName || "Usuario") + '</strong><span class="subtle">Telegram ' + escapeHtml(person.telegramId) + ' · '
+              + escapeHtml((person.permissions || []).length) + ' permisos</span></div><button data-action="webmaster-revoke" data-site-id="' + escapeHtml(site.id)
+              + '" data-telegram-id="' + escapeHtml(person.telegramId) + '">Revocar acceso</button></div>';
           }).join("");
-          const permissions = active ? '<div class="stack"><strong>Permisos de la invitación</strong>'
+          const permissions = active ? '<section class="surface invitation-card"><div class="component-heading"><div><span class="eyebrow">ACCESO A TELEGRAM</span><h3>Crear invitación</h3></div><span class="section-badge">20 minutos</span></div><p class="subtle">El enlace es de un solo uso y vincula a esta web.</p><div class="permission-heading"><strong>Permisos autorizados</strong><span class="subtle">Selecciona lo que podrá hacer</span></div><div class="permission-list">'
             + Object.entries(webmasterPermissions).map(function(entry) {
-              return '<label><input type="checkbox" data-webmaster-permission="' + escapeHtml(entry[0]) + '" '
-                + (entry[0] === "product.delete_permanently" ? "" : "checked") + '> ' + escapeHtml(entry[1]) + '</label>';
+              return '<label class="permission-option"><input type="checkbox" data-webmaster-permission="' + escapeHtml(entry[0]) + '" '
+                + (entry[0] === "product.delete_permanently" ? "" : "checked") + '><span>' + escapeHtml(entry[1]) + '</span></label>';
             }).join("")
-            + '<button class="primary" data-action="webmaster-invite" data-site-id="' + escapeHtml(site.id) + '">Crear invitación de 20 minutos</button>'
-            + '<div data-invite-result></div></div>' : '';
-          return '<article class="registry-row" data-webmaster-site="' + escapeHtml(site.id) + '">'
-            + '<div class="stack"><div class="row" style="justify-content:space-between"><h3>' + escapeHtml(site.label) + '</h3>'
-            + '<span class="pill ' + (active ? "ok" : "off") + '">' + escapeHtml(site.status) + '</span></div>'
-            + '<span class="subtle">' + escapeHtml(site.url) + '</span>'
-            + '<span class="subtle">Conexión comercial · ' + escapeHtml(site.id) + '</span>'
-            + '<strong>Personas vinculadas: ' + String((site.users || []).length) + '</strong>' + people + permissions
-            + '</div></article>';
+            + '</div><button class="primary invite-button" data-action="webmaster-invite" data-site-id="' + escapeHtml(site.id) + '">Crear invitación de 20 minutos</button>'
+            + '<div class="invite-result" data-invite-result></div></section>' : '<section class="surface invitation-card"><h3>Invitaciones no disponibles</h3><p class="subtle">Activa la conexión del sitio para generar enlaces.</p></section>';
+          return '<article class="commercial-workspace" data-webmaster-site="' + escapeHtml(site.id) + '"><div class="commercial-main">'
+            + '<section class="surface site-card"><div class="component-heading"><div><span class="eyebrow">SITIO COMERCIAL</span><h3>' + escapeHtml(site.label) + '</h3></div><span class="pill ' + (active ? "ok" : "off") + '">' + escapeHtml(site.status) + '</span></div>'
+            + (siteUrl ? '<a href="' + escapeHtml(siteUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(site.url) + ' ↗</a>' : '<span class="subtle">' + escapeHtml(site.url || "") + '</span>') + '<div class="site-facts"><div><span class="eyebrow">CONEXIÓN</span><strong>Webmaster IA</strong><small>' + escapeHtml(site.id) + '</small></div><div><span class="eyebrow">PERSONAS VINCULADAS</span><strong>' + String((site.users || []).length) + '</strong><small>Acceso por Telegram</small></div></div><div class="site-foot">Registrado desde Criu Asistente Comercial</div></section>'
+            + '<section class="surface people-card"><div class="component-heading"><h3>Personas vinculadas</h3><span class="section-badge">' + String((site.users || []).length) + '</span></div>'
+            + (people || '<div class="people-empty"><strong>Aún no hay personas vinculadas</strong><p>Genera una invitación y compártela con quien administrará este sitio.</p></div>') + '</section></div>' + permissions + '</article>';
         }).join("");
       }
 
@@ -1562,7 +1632,7 @@ export function renderAdminPage(): string {
           window.localStorage.setItem("mcpHubActiveTab", tabName);
         } catch {}
 
-        document.querySelectorAll("[data-tab]").forEach(function(button) {
+        document.querySelectorAll(".tab-button[data-tab]").forEach(function(button) {
           const active = button.dataset.tab === tabName;
           button.classList.toggle("active", active);
           button.setAttribute("aria-selected", active ? "true" : "false");
@@ -1788,6 +1858,16 @@ export function renderAdminPage(): string {
         this.setAttribute("aria-expanded", open ? "true" : "false");
       });
 
+      document.querySelectorAll("[data-list-filter]").forEach(function(input) {
+        input.addEventListener("input", function() {
+          const needle = this.value.trim().toLocaleLowerCase();
+          const table = document.getElementById(this.dataset.listFilter);
+          table.querySelectorAll(".registry-row").forEach(function(row) {
+            row.hidden = Boolean(needle) && !row.textContent.toLocaleLowerCase().includes(needle);
+          });
+        });
+      });
+
       document.getElementById("sync-wordpress").addEventListener("click", async function() {
         try {
           const payload = await api("/api/admin/connectors/wordpress/sync", { method: "POST" });
@@ -1817,11 +1897,12 @@ export function renderAdminPage(): string {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
 
-        if (target.dataset.tab) {
-          setActiveTab(target.dataset.tab);
-          window.history.replaceState({}, "", window.location.pathname + window.location.search + "#tab-" + target.dataset.tab);
+        const tabTarget = target.closest("[data-tab]");
+        if (tabTarget) {
+          setActiveTab(tabTarget.dataset.tab);
+          window.history.replaceState({}, "", window.location.pathname + window.location.search + "#tab-" + tabTarget.dataset.tab);
           if (window.matchMedia("(max-width: 760px)").matches) {
-            const heading = document.querySelector('[data-panel="' + target.dataset.tab + '"] h2');
+            const heading = document.querySelector('[data-panel="' + tabTarget.dataset.tab + '"] h2');
             if (heading) {
               heading.setAttribute("tabindex", "-1");
               heading.focus();
