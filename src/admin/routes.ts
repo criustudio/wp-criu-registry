@@ -1,5 +1,8 @@
 import { Client } from "@notionhq/client";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { z } from "zod/v4";
 import type { AppConfig } from "../config.js";
 import type { CPanelHub } from "../cpanel.js";
@@ -19,6 +22,18 @@ import { normalizeWordPressMutationInput, type WordPressHub } from "../wordpress
 const loginSchema = z.object({
   apiKey: z.string().min(1),
 });
+
+const pluginPackages = [
+  { id: "codex-bridge", name: "Codex WP Admin Bridge", version: "0.4.0", file: "codex-wp-admin-bridge-0.4.0.zip", sha256: "255FBC9DDB3510A84261D213A173C3DA796E5CFBFCB5E161ABD3F4BCC15659A8", description: "Conecta el sitio WordPress con el Bridge del Hub." },
+  { id: "webmaster-ia", name: "Criu Asistente Comercial", version: "0.4.0", file: "criu-asistente-comercial-0.4.0.zip", sha256: "2B8B291778A3D73779C4C90929DA234D5E013BB2888E327EE0D4E01E44811188", description: "Vincula el sitio con Webmaster IA y las invitaciones de Telegram." },
+] as const;
+
+function verifiedPluginArchive(plugin: (typeof pluginPackages)[number]): Buffer {
+  const archive = readFileSync(resolve(process.cwd(), "releases", plugin.file));
+  const hash = createHash("sha256").update(archive).digest("hex").toUpperCase();
+  if (hash !== plugin.sha256) throw new Error(`El paquete ${plugin.file} no coincide con la versión aprobada.`);
+  return archive;
+}
 
 const notionCreateSchema = z.object({
   alias: z.string().min(1),
@@ -234,6 +249,29 @@ export function registerAdminRoutes(app: Express, services: {
       return;
     }
     next();
+  });
+
+  app.get("/api/admin/plugins", (_req, res) => {
+    try {
+      res.json({ ok: true, plugins: pluginPackages.map((plugin) => ({
+        id: plugin.id, name: plugin.name, version: plugin.version, description: plugin.description,
+        filename: plugin.file, size: verifiedPluginArchive(plugin).length,
+        download_url: `/api/admin/plugins/${plugin.id}/download`,
+      })) });
+    } catch (error) { toResponseError(res, error, 503); }
+  });
+
+  app.get("/api/admin/plugins/:id/download", (req, res) => {
+    const plugin = pluginPackages.find((item) => item.id === req.params.id);
+    if (!plugin) { res.status(404).json({ ok: false, error: "Plugin no encontrado." }); return; }
+    try {
+      const archive = verifiedPluginArchive(plugin);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${plugin.file}"`);
+      res.send(archive);
+    } catch (error) { toResponseError(res, error, 503); }
   });
 
   app.get("/api/admin/connectors", (_req, res) => {

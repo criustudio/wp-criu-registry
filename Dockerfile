@@ -6,6 +6,7 @@ RUN apk add --no-cache curl && npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
+COPY releases ./releases
 RUN npm run build
 
 ENV NODE_ENV=production

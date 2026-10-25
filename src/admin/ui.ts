@@ -804,7 +804,15 @@ export function renderAdminPage(): string {
       .tab-button[data-tab="wordpress"]::before { content: "sync_alt"; }
       .tab-button[data-tab="webmaster"]::before { content: "smart_toy"; }
       .tab-button[data-tab="cpanel"]::before { content: "dns"; }
+      .tab-button[data-tab="downloads"]::before { content: "download"; }
       .tab-button[data-tab="other"]::before { content: "more_horiz"; }
+      .download-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .download-card { display: grid; align-content: start; gap: 12px; padding: 24px; }
+      .download-card h3 { margin: 0; }
+      .download-card p { margin: 0; color: var(--muted); }
+      .download-card .primary { display: inline-flex; align-items: center; justify-self: start; min-height: 40px; padding: 10px 15px; border: 1px solid var(--accent); border-radius: 7px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+      .download-card .primary:hover { filter: brightness(.95); }
+      @media (max-width: 720px) { .download-grid { grid-template-columns: 1fr; } }
       .tab-button.active::before { color: var(--accent); }
       .nav-count { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 22px; margin-left: auto; padding: 0 5px; border-radius: 5px; background: #ebeff3; color: #53606b; font-size: 11px; font-weight: 750; }
       .nav-count:empty { display: none; }
@@ -967,6 +975,7 @@ export function renderAdminPage(): string {
             <button class="tab-button" data-tab="wordpress" aria-selected="false">WordPress Bridge <span class="nav-count" data-nav-count="wordpress"></span></button>
             <button class="tab-button" data-tab="webmaster" aria-selected="false">Webmaster IA <span class="nav-count" data-nav-count="webmaster"></span></button>
             <button class="tab-button" data-tab="cpanel" aria-selected="false">cPanel / WHM <span class="nav-count" data-nav-count="cpanel"></span></button>
+            <button class="tab-button" data-tab="downloads" aria-selected="false">Descargas</button>
             <button class="tab-button" data-tab="other" aria-selected="false">Otros</button>
           </nav>
 
@@ -1043,6 +1052,12 @@ export function renderAdminPage(): string {
               </div>
               <div id="cpanel-table" class="scroll-area"></div>
             </section>
+          </div>
+
+          <div class="tab-panel" data-panel="downloads">
+            <div class="page-intro"><span class="eyebrow">CRIU PRINCIPAL / DESCARGAS</span><h2>Plugins para WordPress</h2><p>Descarga los paquetes para instalar o actualizar las conexiones de tus sitios.</p></div>
+            <div id="plugin-downloads" class="download-grid"></div>
+            <p class="subtle">En WordPress, ve a Plugins → Añadir plugin → Subir plugin y selecciona el archivo ZIP.</p>
           </div>
 
           <div class="tab-panel" data-panel="other">
@@ -1219,6 +1234,8 @@ export function renderAdminPage(): string {
         notionOAuth: { enabled: false, redirect_uri: "" },
         commercial: { sites: [], botConfigured: false },
         commercialError: "",
+        plugins: [],
+        pluginsError: "",
         activeTab: "summary",
         drawer: {
           kind: null,
@@ -1745,16 +1762,27 @@ export function renderAdminPage(): string {
         document.getElementById("menu-toggle").setAttribute("aria-expanded", "false");
       }
 
+      function renderDownloads() {
+        const host = document.getElementById("plugin-downloads");
+        if (state.pluginsError) {
+          host.innerHTML = '<div class="message danger">No se pudieron cargar los paquetes: ' + escapeHtml(state.pluginsError) + '</div>';
+          return;
+        }
+        host.innerHTML = state.plugins.map(function(plugin) {
+          return '<article class="surface download-card"><span class="eyebrow">WORDPRESS · VERSIÓN ' + escapeHtml(plugin.version) + '</span><h3>' + escapeHtml(plugin.name) + '</h3><p>' + escapeHtml(plugin.description) + '</p><span class="subtle">Archivo ZIP · ' + Math.ceil(plugin.size / 1024) + ' KB</span><a class="primary" href="' + escapeHtml(plugin.download_url) + '" download="' + escapeHtml(plugin.filename) + '">Descargar plugin</a></article>';
+        }).join("") || '<div class="message info">No hay paquetes disponibles.</div>';
+      }
+
       function hydrateActiveTab() {
         const hashTab = window.location.hash.replace("#tab-", "").trim();
-        if (hashTab && ["summary", "notion", "wordpress", "webmaster", "cpanel", "other"].includes(hashTab)) {
+        if (hashTab && ["summary", "notion", "wordpress", "webmaster", "cpanel", "downloads", "other"].includes(hashTab)) {
           state.activeTab = hashTab;
           return;
         }
 
         try {
           const saved = window.localStorage.getItem("mcpHubActiveTab");
-          if (saved && ["summary", "notion", "wordpress", "webmaster", "cpanel", "other"].includes(saved)) {
+          if (saved && ["summary", "notion", "wordpress", "webmaster", "cpanel", "downloads", "other"].includes(saved)) {
             state.activeTab = saved;
           }
         } catch {}
@@ -1771,6 +1799,7 @@ export function renderAdminPage(): string {
         renderWordPressTable();
         renderWebmasterSites();
         renderCPanelTable();
+        renderDownloads();
         renderCatalog();
         renderUsageGuide();
         setActiveTab(state.activeTab);
@@ -1786,6 +1815,14 @@ export function renderAdminPage(): string {
           state.commercialError = "";
         } catch (error) {
           state.commercialError = error.message;
+        }
+        try {
+          const packages = await api("/api/admin/plugins");
+          state.plugins = packages.plugins || [];
+          state.pluginsError = "";
+        } catch (error) {
+          state.plugins = [];
+          state.pluginsError = error.message;
         }
         render();
       }
