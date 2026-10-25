@@ -10,7 +10,7 @@ type Enrollment = { hash: string; expiresAt: number };
 type Invitation = { hash: string; siteId: string; permissions: string[]; expiresAt: number };
 type Membership = { siteId: string; permissions: string[]; active: boolean; linkedAt: string };
 type CommercialUser = { telegramId: string; firstName: string; memberships: Membership[]; activeSiteId: string };
-type CommercialState = { version: 1; sites: CommercialSite[]; enrollments: Enrollment[]; invitations: Invitation[]; users: CommercialUser[]; updateIds: number[] };
+type CommercialState = { version: 1; sites: CommercialSite[]; enrollments: Enrollment[]; invitations: Invitation[]; users: CommercialUser[]; updateIds: number[]; pendingReplies: Record<string, { chatId: string; text: string }> };
 
 const permissions = new Set([
   "product.read", "product.update.text", "product.update.price", "product.update.stock",
@@ -62,6 +62,7 @@ class CommercialStore {
       invitations: Array.isArray(loaded.invitations) ? loaded.invitations : [],
       users: Array.isArray(loaded.users) ? loaded.users : [],
       updateIds: Array.isArray(loaded.updateIds) ? loaded.updateIds : [],
+      pendingReplies: loaded.pendingReplies && typeof loaded.pendingReplies === "object" ? loaded.pendingReplies : {},
     };
     this.save();
   }
@@ -78,12 +79,12 @@ class CommercialStore {
   }
 }
 
-async function requestSite(site: CommercialSite, route: string, payload: unknown): Promise<unknown> {
+async function requestSite(site: CommercialSite, route: string, payload: unknown, requestId: string = crypto.randomUUID()): Promise<unknown> {
   const body = JSON.stringify(payload);
   const timestamp = String(Math.floor(Date.now() / 1000));
   const response = await fetch(`${site.url}/wp-json/triu-commercial/v1/${route}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Criu-Timestamp": timestamp, "X-Criu-Signature": sign(site.secret, timestamp, body) },
+    headers: { "Content-Type": "application/json", "X-Criu-Timestamp": timestamp, "X-Criu-Request-ID": requestId, "X-Criu-Signature": sign(site.secret, timestamp, `${requestId}.${body}`) },
     body,
     signal: AbortSignal.timeout(25000),
   });
@@ -108,6 +109,7 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
   const botUsername = process.env.CRIU_COMMERCIAL_BOT_USERNAME ?? "elixirwebmaster_bot";
   const webhookSecret = process.env.CRIU_COMMERCIAL_WEBHOOK_SECRET ?? "";
   const publicUrl = process.env.CRIU_COMMERCIAL_PUBLIC_URL ?? "https://mcp.criu.com.co";
+  const inFlight = new Set<number>();
 
   function admin(req: Request, res: Response): boolean {
     if (!hasAdminSession(req, config.adminSessionSecret)) { fail(res, 401, "Inicia sesión en el panel Criu."); return false; }
@@ -322,10 +324,25 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
     const update = req.body as Record<string, unknown>;
     const updateId = Number(update.update_id);
     if (!Number.isSafeInteger(updateId) || store.data.updateIds.includes(updateId)) { res.json({ ok: true }); return; }
+    if (inFlight.has(updateId)) { fail(res, 503, "Mensaje en proceso."); return; }
+    inFlight.add(updateId);
+    const pending = store.data.pendingReplies[String(updateId)];
+    if (pending) {
+      try {
+        await telegram(botToken, "sendMessage", { chat_id: pending.chatId, text: pending.text });
+        delete store.data.pendingReplies[String(updateId)];
+        store.data.updateIds.push(updateId);
+        store.data.updateIds = store.data.updateIds.slice(-200);
+        store.save();
+        res.json({ ok: true });
+      } catch { fail(res, 503, "No se pudo entregar la respuesta."); }
+      inFlight.delete(updateId);
+      return;
+    }
     const message = update.message as Record<string, unknown> | undefined;
     const chat = message?.chat as Record<string, unknown> | undefined;
     const from = message?.from as Record<string, unknown> | undefined;
-    if (!message || chat?.type !== "private" || !from?.id || !chat?.id) { res.json({ ok: true }); return; }
+    if (!message || chat?.type !== "private" || !from?.id || !chat?.id) { inFlight.delete(updateId); res.json({ ok: true }); return; }
     const actor = String(from.id);
     const text = String(message.text ?? message.caption ?? "").trim();
     let reply = "";
@@ -337,7 +354,7 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
         const site = store.data.sites.find((item) => item.id === invite?.siteId && item.status === "active");
         if (!invite || !site) { reply = "La invitación venció o ya fue utilizada. Pide un nuevo enlace al administrador."; }
         else {
-          await requestSite(site, "hub-link", { telegram_id: actor, first_name: String(from.first_name ?? ""), permissions: invite.permissions });
+          await requestSite(site, "hub-link", { telegram_id: actor, first_name: String(from.first_name ?? ""), permissions: invite.permissions }, `link-${updateId}`);
           if (!user) { user = { telegramId: actor, firstName: String(from.first_name ?? ""), memberships: [], activeSiteId: site.id }; store.data.users.push(user); }
           user.memberships = user.memberships.filter((item) => item.siteId !== site.id);
           user.memberships.push({ siteId: site.id, permissions: invite.permissions, active: true, linkedAt: new Date().toISOString() });
@@ -359,16 +376,22 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
         const site = store.data.sites.find((item) => item.id === user?.activeSiteId && item.status === "active");
         if (!site) { reply = "Elige una web activa con /sitios."; }
         else {
-          const result = await requestSite(site, "hub-message", { message, site_id: site.id }) as { reply?: string };
+          const result = await requestSite(site, "hub-message", { message, site_id: site.id }, `message-${updateId}`) as { reply?: string };
           reply = String(result.reply ?? "No pude responder ahora. Intenta de nuevo.");
         }
       }
-      if (reply) { await telegram(botToken, "sendMessage", { chat_id: chat.id, text: reply }); }
+      if (reply) {
+        store.data.pendingReplies[String(updateId)] = { chatId: String(chat.id), text: reply };
+        store.save();
+        await telegram(botToken, "sendMessage", { chat_id: chat.id, text: reply });
+        delete store.data.pendingReplies[String(updateId)];
+      }
       store.data.updateIds.push(updateId);
       store.data.updateIds = store.data.updateIds.slice(-200);
       store.save();
       res.json({ ok: true });
     } catch { fail(res, 503, "No se pudo procesar el mensaje."); }
+    finally { inFlight.delete(updateId); }
   });
 
   app.get("/admin/commercial", (req, res) => {
