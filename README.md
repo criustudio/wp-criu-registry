@@ -36,6 +36,7 @@ Obligatorias en producción:
 - `ADMIN_API_KEY`
 - `ADMIN_SESSION_SECRET`
 - `WORDPRESS_REGISTRY_TOKEN`
+- `CRIU_COMMERCIAL_TELEGRAM_TOKEN`, `CRIU_COMMERCIAL_WEBHOOK_SECRET` y `CRIU_COMMERCIAL_OPENAI_KEY` para el conector comercial; nunca se incluyen en el plugin ni en el repositorio.
 
 Recomendadas:
 
