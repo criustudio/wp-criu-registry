@@ -370,7 +370,7 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
     if (!admin(req, res)) return;
     res.type("html").send(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Asistente comercial Criu</title>
 <style>body{font:16px system-ui;max-width:960px;margin:40px auto;padding:0 20px;color:#192521}button{padding:9px 14px;margin:5px}article{border:1px solid #ccd5d0;border-radius:10px;padding:18px;margin:14px 0}code{overflow-wrap:anywhere}label{display:block;margin:5px 0}</style>
-<h1>Asistente comercial Criu</h1><p><a href="/admin">Volver al panel MCP</a></p><p>Conexiones comerciales independientes del Bridge.</p>
+<h1>Webmaster IA</h1><p><a href="/admin#tab-webmaster">Volver a Webmaster IA en el panel MCP</a></p><p>Conexiones comerciales independientes del Bridge.</p>
 <p>Instala el plugin en WordPress y pulsa «Registrar con Criu». La web aparecerá aquí; genera la invitación desde su tarjeta.</p><p id="bot"></p><button id="connect-bot">Activar bot compartido</button><div id="sites"></div><p id="notice"></p>
 <script>
 const labels=${JSON.stringify(permissionLabels)};

@@ -635,7 +635,6 @@ export function renderAdminPage(): string {
         <div class="stack">
           <h1>mcp-hub admin</h1>
           <p class="subtle">Panel técnico para onboarding de Notion, registry/bridge de WordPress y futuros conectores.</p>
-          <p><a href="/admin/commercial">Abrir Asistente comercial Criu</a></p>
         </div>
         <label class="field">
           <span>ADMIN_API_KEY</span>
@@ -666,9 +665,6 @@ export function renderAdminPage(): string {
             <h2>Resumen operativo</h2>
             <p class="subtle">El hub expone MCP por <code>/mcp</code>, onboarding humano por <code>/admin</code> y registry WordPress compatible por <code>/sites</code> y <code>/register-site</code>.</p>
           </div>
-          <div class="toolbar">
-            <button id="sync-wordpress" class="primary">Sync WordPress</button>
-          </div>
         </div>
         <div class="hero-grid" id="metrics"></div>
         <div id="global-message" class="message hidden"></div>
@@ -678,7 +674,8 @@ export function renderAdminPage(): string {
         <div class="tab-shell">
           <nav class="surface tab-nav" aria-label="Areas del panel">
             <button class="tab-button active" data-tab="notion" aria-selected="true">Notion</button>
-            <button class="tab-button" data-tab="wordpress" aria-selected="false">WordPress</button>
+            <button class="tab-button" data-tab="wordpress" aria-selected="false">WordPress Bridge</button>
+            <button class="tab-button" data-tab="webmaster" aria-selected="false">Webmaster IA</button>
             <button class="tab-button" data-tab="cpanel" aria-selected="false">cPanel / WHM</button>
             <button class="tab-button" data-tab="other" aria-selected="false">Otros</button>
           </nav>
@@ -710,12 +707,28 @@ export function renderAdminPage(): string {
                     <p class="subtle">Usa el drawer lateral para crear o editar sitios y mantén la tabla ancha para operación, checks y metadata.</p>
                   </div>
                   <div class="toolbar">
+                    <button id="sync-wordpress" class="soft">Revisar WordPress Bridge</button>
                     <button id="open-wordpress-create" class="primary">Nuevo sitio WordPress</button>
                   </div>
                 </div>
                 <div class="message warn">El bridge actual sigue funcionando igual. Esta vista solo organiza mejor la gestión operativa y las acciones.</div>
               </div>
               <div id="wordpress-table" class="scroll-area"></div>
+            </section>
+          </div>
+
+          <div class="tab-panel" data-panel="webmaster">
+            <section class="surface registry-shell">
+              <div class="surface-header">
+                <div class="section-head">
+                  <div class="section-copy">
+                    <h2>Webmaster IA</h2>
+                    <p class="subtle">Instala Criu Asistente Comercial en la web y pulsa Registrar con Criu. Cada sitio aparece aquí con una conexión independiente de WordPress Bridge.</p>
+                  </div>
+                </div>
+                <div id="webmaster-bot-status" class="message info"></div>
+              </div>
+              <div id="webmaster-sites" class="registry-list"></div>
             </section>
           </div>
 
@@ -908,6 +921,8 @@ export function renderAdminPage(): string {
         connectors: [],
         catalog: [],
         notionOAuth: { enabled: false, redirect_uri: "" },
+        commercial: { sites: [], botConfigured: false },
+        commercialError: "",
         activeTab: "notion",
         drawer: {
           kind: null,
@@ -968,6 +983,13 @@ export function renderAdminPage(): string {
           .replace(/>/g, "&gt;")
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#39;");
+      }
+
+      function readableError(value) {
+        const raw = String(value || "");
+        const bridge = /^Bridge (\\d+) en ([^:]+):/.exec(raw);
+        if (bridge) return "Bridge de " + bridge[2] + " respondió HTTP " + bridge[1] + ". Revisa esa web en la pestaña WordPress Bridge.";
+        return raw.replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 300);
       }
 
       function statusPill(value) {
@@ -1147,12 +1169,14 @@ export function renderAdminPage(): string {
         const wordpress = getWordPressConnector();
         const notionEnabled = state.connectors.filter((connector) => connector.kind === "notion" && connector.status === "enabled").length;
         const wordpressSites = wordpress?.entities?.length || 0;
+        const webmasterSites = state.commercial.sites?.length || 0;
         const cPanelAccounts = getCPanelConnector()?.entities?.length || 0;
         const healthWarnings = state.connectors.filter((connector) => connector.last_error).length;
         document.getElementById("metrics").innerHTML = [
           ["Conectores", String(state.connectors.length)],
           ["Notion activos", String(notionEnabled)],
           ["Sitios WordPress", String(wordpressSites)],
+          ["Webmaster IA", String(webmasterSites)],
           ["Cuentas cPanel", String(cPanelAccounts)],
           ["Alertas", String(healthWarnings)],
         ].map(function(metric) {
@@ -1168,7 +1192,7 @@ export function renderAdminPage(): string {
             : connector.kind === "cpanel"
               ? "Cuentas: " + (connector.entities?.length || 0)
               : "Alias: " + escapeHtml(connector.config.alias) + (connector.config.workspaceName ? " · " + escapeHtml(connector.config.workspaceName) : "");
-          const error = connector.last_error ? '<div class="message danger">' + escapeHtml(connector.last_error) + "</div>" : "";
+          const error = connector.last_error ? '<div class="message danger">' + escapeHtml(readableError(connector.last_error)) + "</div>" : "";
           return '<article class="mini-card">'
             + '<div class="row" style="justify-content:space-between"><strong>' + escapeHtml(connector.label) + '</strong><span class="pill">' + escapeHtml(connector.kind) + "</span></div>"
             + '<div class="subtle">' + summary + "</div>"
@@ -1236,7 +1260,7 @@ export function renderAdminPage(): string {
           const tags = (entity.tags || []).join(", ");
           const health = entity.last_health || "unknown";
           const healthTone = health === "ok" ? "ok" : (health === "unknown" ? "off" : "error");
-          const error = entity.last_error ? '<div class="message danger">' + escapeHtml(entity.last_error) + "</div>" : "";
+          const error = entity.last_error ? '<div class="message danger">' + escapeHtml(readableError(entity.last_error)) + "</div>" : "";
           return '<article class="registry-row">'
             + '<div class="registry-grid wordpress">'
             + '<div class="cell"><span class="caption">Sitio</span><strong>' + escapeHtml(entity.site.site_id) + '</strong><span class="subtle">' + escapeHtml(entity.site.site_label || "") + ' · ' + escapeHtml(entity.site.environment || "") + "</span></div>"
@@ -1255,6 +1279,61 @@ export function renderAdminPage(): string {
         }).join("");
 
         container.innerHTML = '<div class="registry-shell">' + head + '<div class="registry-list">' + rows + "</div></div>";
+      }
+
+      const webmasterPermissions = {
+        "product.read": "Consultar productos",
+        "product.update.text": "Cambiar textos de productos",
+        "product.update.price": "Cambiar precios",
+        "product.update.stock": "Actualizar existencias",
+        "product.update.media": "Cambiar fotos de productos",
+        "product.trash": "Enviar productos a la papelera",
+        "product.delete_permanently": "Eliminar productos definitivamente, con doble confirmación",
+        "page.update.content": "Actualizar contenido autorizado de páginas",
+      };
+
+      function renderWebmasterSites() {
+        const status = document.getElementById("webmaster-bot-status");
+        const container = document.getElementById("webmaster-sites");
+        if (state.commercialError) {
+          status.className = "message danger";
+          status.textContent = "No se pudieron cargar las conexiones comerciales: " + state.commercialError;
+          container.replaceChildren();
+          return;
+        }
+        status.className = "message " + (state.commercial.botConfigured ? "info" : "warn");
+        status.textContent = state.commercial.botConfigured
+          ? "Bot e invitaciones gestionados por el Hub de Criu."
+          : "Configura el bot en el servidor para poder crear invitaciones.";
+        const sites = state.commercial.sites || [];
+        if (!sites.length) {
+          container.innerHTML = '<div class="empty-state">Todavía no hay webs comerciales registradas. Instala el plugin y pulsa <strong>Registrar con Criu</strong> en WordPress.</div>';
+          return;
+        }
+        container.innerHTML = sites.map(function(site) {
+          const active = site.status === "active";
+          const people = (site.users || []).map(function(person) {
+            return '<div class="row" style="justify-content:space-between;margin:8px 0"><span>'
+              + escapeHtml(person.firstName || "Usuario") + ' · Telegram ' + escapeHtml(person.telegramId)
+              + ' · ' + escapeHtml((person.permissions || []).map(function(item) { return webmasterPermissions[item] || item; }).join(", "))
+              + '</span><button data-action="webmaster-revoke" data-site-id="' + escapeHtml(site.id)
+              + '" data-telegram-id="' + escapeHtml(person.telegramId) + '">Revocar</button></div>';
+          }).join("");
+          const permissions = active ? '<div class="stack"><strong>Permisos de la invitación</strong>'
+            + Object.entries(webmasterPermissions).map(function(entry) {
+              return '<label><input type="checkbox" data-webmaster-permission="' + escapeHtml(entry[0]) + '" '
+                + (entry[0] === "product.delete_permanently" ? "" : "checked") + '> ' + escapeHtml(entry[1]) + '</label>';
+            }).join("")
+            + '<button class="primary" data-action="webmaster-invite" data-site-id="' + escapeHtml(site.id) + '">Crear invitación de 20 minutos</button>'
+            + '<div data-invite-result></div></div>' : '';
+          return '<article class="registry-row" data-webmaster-site="' + escapeHtml(site.id) + '">'
+            + '<div class="stack"><div class="row" style="justify-content:space-between"><h3>' + escapeHtml(site.label) + '</h3>'
+            + '<span class="pill ' + (active ? "ok" : "off") + '">' + escapeHtml(site.status) + '</span></div>'
+            + '<span class="subtle">' + escapeHtml(site.url) + '</span>'
+            + '<span class="subtle">Conexión comercial · ' + escapeHtml(site.id) + '</span>'
+            + '<strong>Personas vinculadas: ' + String((site.users || []).length) + '</strong>' + people + permissions
+            + '</div></article>';
+        }).join("");
       }
 
       function renderCPanelTable() {
@@ -1364,14 +1443,14 @@ export function renderAdminPage(): string {
 
       function hydrateActiveTab() {
         const hashTab = window.location.hash.replace("#tab-", "").trim();
-        if (hashTab && ["notion", "wordpress", "cpanel", "other"].includes(hashTab)) {
+        if (hashTab && ["notion", "wordpress", "webmaster", "cpanel", "other"].includes(hashTab)) {
           state.activeTab = hashTab;
           return;
         }
 
         try {
           const saved = window.localStorage.getItem("mcpHubActiveTab");
-          if (saved && ["notion", "wordpress", "cpanel", "other"].includes(saved)) {
+          if (saved && ["notion", "wordpress", "webmaster", "cpanel", "other"].includes(saved)) {
             state.activeTab = saved;
           }
         } catch {}
@@ -1386,6 +1465,7 @@ export function renderAdminPage(): string {
         renderNotionOauthStatus();
         renderNotionTable();
         renderWordPressTable();
+        renderWebmasterSites();
         renderCPanelTable();
         renderCatalog();
         renderUsageGuide();
@@ -1397,6 +1477,12 @@ export function renderAdminPage(): string {
         state.connectors = payload.connectors;
         state.catalog = payload.catalog;
         state.notionOAuth = payload.notion_oauth || { enabled: false, redirect_uri: "" };
+        try {
+          state.commercial = await api("/api/admin/connectors/commercial/sites");
+          state.commercialError = "";
+        } catch (error) {
+          state.commercialError = error.message;
+        }
         render();
       }
 
@@ -1565,7 +1651,10 @@ export function renderAdminPage(): string {
       document.getElementById("sync-wordpress").addEventListener("click", async function() {
         try {
           const payload = await api("/api/admin/connectors/wordpress/sync", { method: "POST" });
-          showMessage(globalMessage, JSON.stringify(payload, null, 2), "info");
+          const failures = (payload.result || []).filter(function(item) { return !item.ok; });
+          showMessage(globalMessage, failures.length
+            ? "Bridge: " + failures.length + " sitio(s) con error. " + failures.map(function(item) { return item.site_id; }).join(", ")
+            : "Bridge: " + (payload.result || []).length + " sitio(s) revisados correctamente.", failures.length ? "warn" : "info");
           await loadOverview();
         } catch (error) {
           showMessage(globalMessage, error.message, "danger");
@@ -1598,6 +1687,41 @@ export function renderAdminPage(): string {
         if (!action) return;
 
         try {
+          if (action === "webmaster-invite") {
+            const card = target.closest("[data-webmaster-site]");
+            if (!card || card.dataset.webmasterSite !== target.dataset.siteId) return;
+            const granted = Array.from(card.querySelectorAll("input[data-webmaster-permission]:checked"))
+              .map(function(input) { return input.dataset.webmasterPermission; });
+            const result = await api("/api/admin/connectors/commercial/sites/" + encodeURIComponent(target.dataset.siteId) + "/invitations", {
+              method: "POST", body: { permissions: granted },
+            });
+            const output = card.querySelector("[data-invite-result]");
+            output.replaceChildren();
+            const label = document.createElement("p");
+            label.textContent = "Enlace de un solo uso. Envíalo a la persona antes de 20 minutos:";
+            const link = document.createElement("input");
+            link.className = "regular-text";
+            link.readOnly = true;
+            link.value = result.url;
+            const open = document.createElement("a");
+            open.href = result.url;
+            open.target = "_blank";
+            open.rel = "noopener noreferrer";
+            open.textContent = "Abrir invitación";
+            output.append(label, link, open);
+            showMessage(globalMessage, "Invitación creada para " + (state.commercial.sites.find(function(site) { return site.id === target.dataset.siteId; })?.label || "esta web") + ".", "info");
+            return;
+          }
+
+          if (action === "webmaster-revoke") {
+            if (!window.confirm("Revocar el acceso de esta persona a esta web?")) return;
+            await api("/api/admin/connectors/commercial/sites/" + encodeURIComponent(target.dataset.siteId)
+              + "/users/" + encodeURIComponent(target.dataset.telegramId) + "/revoke", { method: "POST" });
+            showMessage(globalMessage, "Acceso comercial revocado.", "info");
+            await loadOverview();
+            return;
+          }
+
           if (action === "validate-notion") {
             await api("/api/admin/connectors/notion/" + target.dataset.alias + "/validate", { method: "POST" });
             showMessage(globalMessage, "Conexión Notion validada.", "info");

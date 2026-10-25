@@ -410,6 +410,10 @@ export class StateStore {
         wordpressConnector.updated_at = connector.updated_at ?? nowIso();
         wordpressConnector.last_check_at = connector.last_check_at;
         wordpressConnector.last_error = connector.last_error ?? null;
+        const failedSite = /^Bridge \d+ en ([^:]+):/.exec(wordpressConnector.last_error ?? "")?.[1];
+        if (failedSite && !normalizedEntities.some((entity) => entity.site.site_id === failedSite)) {
+          wordpressConnector.last_error = null;
+        }
         connectorMap.set("wordpress", wordpressConnector);
       }
 
@@ -1080,6 +1084,10 @@ export class StateStore {
     }
 
     connector.entities = next;
+    const failedSite = /^Bridge \d+ en ([^:]+):/.exec(connector.last_error ?? "")?.[1];
+    if (failedSite && this.normalizeSiteKey(failedSite) === key) {
+      connector.last_error = null;
+    }
     connector.updated_at = nowIso();
     this.persist();
 

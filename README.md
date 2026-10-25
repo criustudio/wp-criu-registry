@@ -9,7 +9,7 @@ Este servicio consolida dos cosas en una sola capa:
 
 - Hub MCP con herramientas de Notion, WordPress y cPanel/WHM.
 - State store persistido en JSON para onboarding editable.
-- Panel técnico en `/admin`.
+- Panel técnico en `/admin`, con pestañas separadas para WordPress Bridge y Webmaster IA. El plugin comercial registra cada sitio automáticamente y las invitaciones se crean desde la pestaña Webmaster IA.
 - Admin API en `/api/admin/*`.
 - Registry WordPress compatible:
   - `GET /sites`
