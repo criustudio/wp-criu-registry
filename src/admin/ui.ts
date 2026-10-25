@@ -4,9 +4,9 @@ export function renderAdminPage(): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MCP Hub Admin</title>
+    <title>Criu Hub MSP</title>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
       :root {
         color-scheme: light;
@@ -627,66 +627,198 @@ export function renderAdminPage(): string {
           transition: none !important;
         }
       }
+
+      /* Criu Hub: calm CMS shell with a light sky-blue accent. */
+      :root {
+        --bg: #f6f8fb;
+        --panel: #ffffff;
+        --panel-strong: #ffffff;
+        --line: #e1e7ee;
+        --line-strong: #c7d3df;
+        --text: #182635;
+        --muted: #607080;
+        --accent: #147fb4;
+        --accent-strong: #0e608c;
+        --accent-soft: #e8f5fc;
+        --warm: #9a6323;
+        --warm-soft: #fff6e8;
+        --danger: #b43e45;
+        --danger-soft: #fff0f1;
+        --shadow: 0 1px 3px rgba(19, 42, 62, .045);
+        --shell: 100%;
+        --radius-xl: 12px;
+        --radius-lg: 10px;
+        --radius-md: 8px;
+        --radius-sm: 6px;
+      }
+
+      html, body { min-width: 320px; }
+      body { background: var(--bg); }
+      h1, h2, h3, h4 { font-family: "Space Grotesk", "Segoe UI", sans-serif; letter-spacing: -.025em; }
+      h1 { font-size: 22px; line-height: 1.2; }
+      h2 { font-size: 22px; line-height: 1.25; }
+      h3 { font-size: 16px; }
+      h1 span { color: var(--accent); }
+      a { color: var(--accent-strong); }
+      button { border-radius: 8px; padding: 9px 14px; font-weight: 600; box-shadow: none; }
+      button:hover { transform: none; border-color: var(--accent); background: var(--accent-soft); }
+      button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      button.primary { background: var(--accent); border-color: var(--accent); box-shadow: none; }
+      button.primary:hover { background: var(--accent-strong); color: #fff; }
+      button.warn { background: #fff; color: var(--muted); border-color: var(--line); }
+      button.soft { background: #fff; }
+      button.danger { border-color: #eac9cc; }
+      input, textarea, select { border-radius: 8px; background: #fff; }
+      input:focus, textarea:focus, select:focus { box-shadow: 0 0 0 3px rgba(20, 127, 180, .13); }
+      pre { border-color: var(--line); border-radius: 8px; background: #f7f9fb; }
+      .surface, .hero, .login-card, .drawer-shell { border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow); backdrop-filter: none; background: #fff; }
+      .surface, .hero { padding: 22px; }
+      .mobile-only { display: none; }
+      #app-shell { min-height: 100vh; }
+      .app-header { position: sticky; top: 0; z-index: 12; width: 100%; padding: 15px 28px; border-bottom: 1px solid var(--line); background: #fff; }
+      .app-header .stack { gap: 1px; }
+      .app-header .subtle { font-size: 12px; }
+      #global-message:not(.hidden) { position: relative; z-index: 2; margin: 16px 28px 0 264px; }
+      main.shell { width: 100%; margin: 0; padding: 0; }
+      .tab-shell { grid-template-columns: 236px minmax(0, 1fr); gap: 0; align-items: start; min-height: calc(100vh - 76px); }
+      .tab-nav { position: sticky; top: 76px; z-index: 3; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 3px; min-width: 0; height: calc(100vh - 76px); padding: 18px 12px; border: 0; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; background: #fff; }
+      .tab-button { width: 100%; justify-content: flex-start; text-align: left; border: 0; border-radius: 7px; color: var(--muted); font-size: 14px; }
+      .tab-button:hover { color: var(--accent-strong); }
+      .tab-button.active { background: var(--accent-soft); color: var(--accent-strong); border: 0; box-shadow: inset 3px 0 0 var(--accent); }
+      .tab-panel { min-width: 0; padding: 28px clamp(20px, 3vw, 48px) 52px; }
+      .tab-panel.active { gap: 20px; }
+      .hero { gap: 22px; }
+      .hero-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      .metric { min-width: 0; border-color: var(--line); border-radius: 10px; background: #fff; }
+      .metric strong { font-family: "Space Grotesk", sans-serif; color: var(--text); font-size: 32px; }
+      .registry-shell { gap: 20px; }
+      .registry-list { gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+      .registry-row { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: #fff; }
+      .registry-row:last-child { border-bottom: 0; }
+      .registry-grid { padding: 18px; }
+      .cell, .mini-card, .registry-row, .drawer-body { overflow-wrap: anywhere; }
+      .registry-head { padding: 0 18px; }
+      .row-footer { padding: 10px 18px 14px; border-color: var(--line); background: #fff; }
+      .pill { border-color: var(--line); background: #f8fafc; }
+      .pill.ok, .message.info, .drawer-note { color: var(--accent-strong); border-color: #cde6f4; background: var(--accent-soft); }
+      .pill.off, .message.warn { color: var(--warm); border-color: #f0dec3; background: var(--warm-soft); }
+      .pill.error, .message.danger { color: var(--danger); border-color: #edcdd1; background: var(--danger-soft); }
+      .message, .empty-state { border-color: var(--line); border-radius: 8px; background: #f8fafc; }
+      .layout-other { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .layout-other > :last-child { grid-column: 1 / -1; }
+      .mini-card { border-color: var(--line); border-radius: 9px; background: #fff; }
+      .scroll-area { max-height: none; padding-right: 0; }
+      .drawer-backdrop { background: rgba(24, 38, 53, .38); backdrop-filter: none; }
+      .drawer { width: min(560px, 100vw); padding: 0; }
+      .drawer-shell { border-radius: 0; padding: 24px; }
+      .drawer-body { padding-right: 8px; }
+      .drawer-actions { border-top: 1px solid var(--line); padding-top: 14px; }
+      .login-card { width: min(420px, 100%); padding: 32px; }
+
+      @media (max-width: 1100px) {
+        .hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .layout-other { grid-template-columns: 1fr; }
+        .layout-other > :last-child { grid-column: auto; }
+      }
+      @media (max-width: 760px) {
+        .mobile-only { display: inline-flex; }
+        .app-header { padding: 12px 14px; }
+        .app-header h1 { font-size: 18px; }
+        .app-header .subtle { display: none; }
+        .app-header .row { flex-wrap: nowrap; align-items: center !important; }
+        .app-header .toolbar { flex-wrap: nowrap; gap: 5px; }
+        .app-header .toolbar button { flex: none; min-height: 40px; padding: 7px 9px; font-size: 12px; }
+        #global-message:not(.hidden) { margin: 12px 14px 0; }
+        .tab-shell { display: block; min-height: calc(100vh - 65px); }
+        .tab-nav { position: fixed; top: 65px; bottom: 0; left: 0; z-index: 11; width: min(280px, 86vw); height: auto; overflow: auto; transform: translateX(-105%); transition: transform .18s ease; box-shadow: 12px 0 24px rgba(24, 38, 53, .08); }
+        .tab-nav.open { transform: translateX(0); }
+        .tab-button { flex: none; }
+        .tab-panel { padding: 18px 14px 36px; }
+        .hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .hero, .surface { padding: 18px; border-radius: 10px; }
+        .registry-grid.notion, .registry-grid.wordpress { grid-template-columns: 1fr; }
+        .row-footer button { flex: 1 1 auto; }
+        .toolbar button { flex: none; }
+        .drawer { width: 100vw; padding: 0; }
+        .drawer-shell { border-radius: 0; padding: 16px; }
+        .drawer-actions { flex-wrap: nowrap; }
+        .drawer-actions button { flex: 1; }
+      }
+      @media (max-width: 420px) {
+        .hero-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+        .metric { padding: 10px; }
+        .metric strong { font-size: 26px; }
+        .app-header .toolbar button { padding: 6px 7px; }
+        #refresh-all { width: 40px; font-size: 0; }
+        #refresh-all::before { content: "↻"; font-size: 23px; line-height: 1; }
+        .section-head .toolbar { width: 100%; }
+        .section-head .toolbar button { width: 100%; }
+      }
     </style>
   </head>
   <body>
     <div id="login-shell" class="hidden">
       <form class="login-card" id="login-form">
         <div class="stack">
-          <h1>mcp-hub admin</h1>
-          <p class="subtle">Panel técnico para onboarding de Notion, registry/bridge de WordPress y futuros conectores.</p>
+          <h1>Criu Hub MSP</h1>
+          <p class="subtle">Panel técnico de conectores.</p>
         </div>
         <label class="field">
           <span>ADMIN_API_KEY</span>
           <input id="login-key" type="password" autocomplete="current-password" />
         </label>
         <button class="primary" type="submit">Entrar</button>
-        <div id="login-message" class="message hidden"></div>
+        <div id="login-message" class="message hidden" role="alert"></div>
       </form>
     </div>
 
     <div id="app-shell" class="hidden">
-      <header class="shell">
+      <header class="shell app-header">
         <div class="row" style="justify-content:space-between; align-items:start;">
           <div class="stack">
-            <h1>MCP Hub Admin</h1>
-            <p class="subtle">Onboarding técnico, compatibilidad MCP y gestión de entidades conectadas.</p>
+            <h1>Criu Hub <span>MSP</span></h1>
+            <p class="subtle">Panel de conectores</p>
           </div>
           <div class="toolbar">
-            <button id="refresh-all" class="soft">Refrescar</button>
+            <button id="menu-toggle" class="soft mobile-only" type="button" aria-controls="panel-nav" aria-expanded="false">Menú</button>
+            <button id="refresh-all" class="soft" aria-label="Refrescar">Refrescar</button>
             <button id="logout-btn" class="warn">Salir</button>
           </div>
         </div>
       </header>
 
-      <div class="shell hero">
-        <div class="hero-top">
-          <div class="stack">
-            <h2>Resumen operativo</h2>
-            <p class="subtle">El hub expone MCP por <code>/mcp</code>, onboarding humano por <code>/admin</code> y registry WordPress compatible por <code>/sites</code> y <code>/register-site</code>.</p>
-          </div>
-        </div>
-        <div class="hero-grid" id="metrics"></div>
-        <div id="global-message" class="message hidden"></div>
-      </div>
+      <div id="global-message" class="message hidden" role="status" aria-live="polite"></div>
 
       <main class="shell">
         <div class="tab-shell">
-          <nav class="surface tab-nav" aria-label="Areas del panel">
-            <button class="tab-button active" data-tab="notion" aria-selected="true">Notion</button>
+          <nav id="panel-nav" class="surface tab-nav" aria-label="Áreas del panel">
+            <button class="tab-button active" data-tab="summary" aria-selected="true">Resumen</button>
+            <button class="tab-button" data-tab="notion" aria-selected="false">Notion</button>
             <button class="tab-button" data-tab="wordpress" aria-selected="false">WordPress Bridge</button>
             <button class="tab-button" data-tab="webmaster" aria-selected="false">Webmaster IA</button>
             <button class="tab-button" data-tab="cpanel" aria-selected="false">cPanel / WHM</button>
             <button class="tab-button" data-tab="other" aria-selected="false">Otros</button>
           </nav>
 
-          <div class="tab-panel active" data-panel="notion">
+          <div class="tab-panel active" data-panel="summary">
+            <section class="surface hero">
+              <div class="hero-top">
+                <div class="stack">
+                  <h2>Resumen</h2>
+                  <p class="subtle">Conexiones registradas en el Hub. Los recuentos no indican por sí solos el estado de salud.</p>
+                </div>
+              </div>
+              <div class="hero-grid" id="metrics"></div>
+            </section>
+          </div>
+
+          <div class="tab-panel" data-panel="notion">
             <section class="surface registry-shell">
               <div class="surface-header">
                 <div class="section-head">
                   <div class="section-copy">
                     <h2>Conexiones Notion</h2>
-                    <p class="subtle">Crea y administra perfiles OAuth desde un drawer lateral y deja el resto del panel para la tabla operativa.</p>
+                    <p class="subtle">Administra las conexiones y autoriza nuevos espacios de trabajo.</p>
                   </div>
                   <div class="toolbar">
                     <button id="open-notion-create" class="primary">Nueva conexión Notion</button>
@@ -703,15 +835,15 @@ export function renderAdminPage(): string {
               <div class="surface-header">
                 <div class="section-head">
                   <div class="section-copy">
-                    <h2>Sitios WordPress</h2>
-                    <p class="subtle">Usa el drawer lateral para crear o editar sitios y mantén la tabla ancha para operación, checks y metadata.</p>
+                    <h2>WordPress Bridge</h2>
+                    <p class="subtle">Registra sitios, revisa su conexión y administra sus datos de acceso.</p>
                   </div>
                   <div class="toolbar">
                     <button id="sync-wordpress" class="soft">Revisar WordPress Bridge</button>
                     <button id="open-wordpress-create" class="primary">Nuevo sitio WordPress</button>
                   </div>
                 </div>
-                <div class="message warn">El bridge actual sigue funcionando igual. Esta vista solo organiza mejor la gestión operativa y las acciones.</div>
+                <div class="message info">Los sitios Bridge se administran por separado de Webmaster IA.</div>
               </div>
               <div id="wordpress-table" class="scroll-area"></div>
             </section>
@@ -738,7 +870,7 @@ export function renderAdminPage(): string {
                 <div class="section-head">
                   <div class="section-copy">
                     <h2>Cuentas cPanel / WHM</h2>
-                    <p class="subtle">Registra tokens API separados por cuenta o una credencial WHM reseller. Los tokens nunca se muestran en los listados.</p>
+                    <p class="subtle">Registra cuentas cPanel o WHM y valida sus tokens de acceso.</p>
                   </div>
                   <div class="toolbar">
                     <button id="open-cpanel-create" class="primary">Nueva cuenta cPanel</button>
@@ -770,8 +902,8 @@ export function renderAdminPage(): string {
 
               <section class="surface stack">
                 <div class="section-copy">
-                  <h2>Uso personal</h2>
-                  <p class="subtle">Referencia rápida para conectar Codex, registrar WordPress y operar el hub sin depender de notas externas.</p>
+                  <h2>Guía técnica</h2>
+                  <p class="subtle">Referencia para conectar Codex, registrar WordPress y operar el Hub.</p>
                 </div>
                 <div id="usage-guide" class="usage-grid"></div>
               </section>
@@ -792,7 +924,7 @@ export function renderAdminPage(): string {
           <button id="drawer-close" class="soft" type="button">Cerrar</button>
         </div>
 
-        <div id="drawer-message" class="message hidden"></div>
+        <div id="drawer-message" class="message hidden" role="alert"></div>
 
         <form id="drawer-form" class="drawer-form">
           <div class="drawer-body">
@@ -800,22 +932,22 @@ export function renderAdminPage(): string {
               <div class="drawer-note">
                 La creación de nuevas conexiones de Notion se hace por autorización OAuth. Guardas alias y metadata aquí, y luego el hub abre el flujo de autorización de Notion.
               </div>
-              <div class="field">
+              <label class="field">
                 <span>Alias</span>
                 <input id="notion-alias" />
-              </div>
-              <div class="field">
-                <span>Label</span>
+              </label>
+              <label class="field">
+                <span>Nombre visible</span>
                 <input id="notion-label" />
-              </div>
-              <div class="field">
-                <span>Default Parent Page ID (opcional)</span>
+              </label>
+              <label class="field">
+                <span>ID de página padre (opcional)</span>
                 <input id="notion-parent" />
-              </div>
-              <div class="field">
-                <span>Notion Version</span>
+              </label>
+              <label class="field">
+                <span>Versión API de Notion</span>
                 <input id="notion-version" placeholder="2025-09-03" />
-              </div>
+              </label>
               <div id="notion-edit-fields" class="split-row hidden">
                 <label class="field">
                   <span>Estado</span>
@@ -834,59 +966,59 @@ export function renderAdminPage(): string {
             <div id="drawer-wordpress-fields" class="stack hidden">
               <div class="split-row">
                 <label class="field">
-                  <span>site_id</span>
+                  <span>ID del sitio</span>
                   <input id="wp-site-id" />
                 </label>
                 <label class="field">
-                  <span>site_label</span>
+                  <span>Nombre del sitio</span>
                   <input id="wp-site-label" />
                 </label>
               </div>
               <div class="split-row">
                 <label class="field">
-                  <span>environment</span>
+                  <span>Entorno</span>
                   <select id="wp-environment">
-                    <option value="production">production</option>
+                    <option value="production">Producción</option>
                     <option value="staging">staging</option>
-                    <option value="development">development</option>
+                    <option value="development">Desarrollo</option>
                   </select>
                 </label>
                 <label class="field">
-                  <span>Group</span>
+                  <span>Grupo</span>
                   <input id="wp-group" />
                 </label>
               </div>
-              <div class="field">
-                <span>base_url</span>
-                <input id="wp-base-url" />
-              </div>
-              <div class="field">
-                <span>bridge_url</span>
-                <input id="wp-bridge-url" />
-              </div>
-              <div class="field">
-                <span>token</span>
+              <label class="field">
+                <span>URL base del sitio</span>
+                <input id="wp-base-url" type="url" />
+              </label>
+              <label class="field">
+                <span>URL del Bridge</span>
+                <input id="wp-bridge-url" type="url" />
+              </label>
+              <label class="field">
+                <span>Token de acceso</span>
                 <input id="wp-token" type="password" />
-              </div>
-              <div class="field">
+              </label>
+              <label class="field">
                 <span>Notas del sitio</span>
                 <textarea id="wp-site-notes" placeholder="Una nota por línea"></textarea>
-              </div>
-              <div class="field">
-                <span>Tags</span>
+              </label>
+              <label class="field">
+                <span>Etiquetas</span>
                 <textarea id="wp-tags" placeholder="Un tag por línea"></textarea>
-              </div>
-              <div class="field">
+              </label>
+              <label class="field">
                 <span>Notas internas</span>
                 <textarea id="wp-metadata-notes" placeholder="Una nota por línea"></textarea>
-              </div>
+              </label>
             </div>
 
             <div id="drawer-cpanel-fields" class="stack hidden">
               <div class="drawer-note">Usa un token API, nunca la contraseña principal. Para una cuenta individual usa cPanel/2083; para administrar varias cuentas usa WHM/2087 con permisos mínimos.</div>
               <div class="split-row">
-                <label class="field"><span>account_id</span><input id="cpanel-account-id" /></label>
-                <label class="field"><span>Label</span><input id="cpanel-account-label" /></label>
+                <label class="field"><span>ID de la cuenta</span><input id="cpanel-account-id" /></label>
+                <label class="field"><span>Nombre visible</span><input id="cpanel-account-label" /></label>
               </div>
               <div class="split-row">
                 <label class="field"><span>Tipo de token</span><select id="cpanel-auth-mode"><option value="cpanel_token">cPanel token</option><option value="whm_token">WHM token</option></select></label>
@@ -896,14 +1028,14 @@ export function renderAdminPage(): string {
                 <label class="field"><span>Host</span><input id="cpanel-host" placeholder="host5.bienvenidohosting.com" /></label>
                 <label class="field"><span>Usuario API</span><input id="cpanel-username" /></label>
               </div>
-              <div class="field"><span>Dominio principal (opcional para WHM)</span><input id="cpanel-domain" /></div>
-              <div class="field"><span>API token</span><input id="cpanel-token" type="password" placeholder="Déjalo vacío al editar para conservarlo" /></div>
-              <div class="field"><span>Notas de la cuenta</span><textarea id="cpanel-account-notes" placeholder="Una nota por línea"></textarea></div>
+              <label class="field"><span>Dominio principal (opcional para WHM)</span><input id="cpanel-domain" /></label>
+              <label class="field"><span>API token</span><input id="cpanel-token" type="password" placeholder="Déjalo vacío al editar para conservarlo" /></label>
+              <label class="field"><span>Notas de la cuenta</span><textarea id="cpanel-account-notes" placeholder="Una nota por línea"></textarea></label>
               <div class="split-row">
                 <label class="field"><span>Grupo</span><input id="cpanel-group" /></label>
                 <label class="field"><span>Tags</span><input id="cpanel-tags" placeholder="separados por línea" /></label>
               </div>
-              <div class="field"><span>Notas internas</span><textarea id="cpanel-metadata-notes" placeholder="Una nota por línea"></textarea></div>
+              <label class="field"><span>Notas internas</span><textarea id="cpanel-metadata-notes" placeholder="Una nota por línea"></textarea></label>
             </div>
           </div>
 
@@ -923,7 +1055,7 @@ export function renderAdminPage(): string {
         notionOAuth: { enabled: false, redirect_uri: "" },
         commercial: { sites: [], botConfigured: false },
         commercialError: "",
-        activeTab: "notion",
+        activeTab: "summary",
         drawer: {
           kind: null,
           mode: "create",
@@ -1439,18 +1571,20 @@ export function renderAdminPage(): string {
         document.querySelectorAll("[data-panel]").forEach(function(panel) {
           panel.classList.toggle("active", panel.dataset.panel === tabName);
         });
+        document.getElementById("panel-nav").classList.remove("open");
+        document.getElementById("menu-toggle").setAttribute("aria-expanded", "false");
       }
 
       function hydrateActiveTab() {
         const hashTab = window.location.hash.replace("#tab-", "").trim();
-        if (hashTab && ["notion", "wordpress", "webmaster", "cpanel", "other"].includes(hashTab)) {
+        if (hashTab && ["summary", "notion", "wordpress", "webmaster", "cpanel", "other"].includes(hashTab)) {
           state.activeTab = hashTab;
           return;
         }
 
         try {
           const saved = window.localStorage.getItem("mcpHubActiveTab");
-          if (saved && ["notion", "wordpress", "webmaster", "cpanel", "other"].includes(saved)) {
+          if (saved && ["summary", "notion", "wordpress", "webmaster", "cpanel", "other"].includes(saved)) {
             state.activeTab = saved;
           }
         } catch {}
@@ -1648,6 +1782,12 @@ export function renderAdminPage(): string {
         });
       });
 
+      document.getElementById("menu-toggle").addEventListener("click", function() {
+        const nav = document.getElementById("panel-nav");
+        const open = nav.classList.toggle("open");
+        this.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
       document.getElementById("sync-wordpress").addEventListener("click", async function() {
         try {
           const payload = await api("/api/admin/connectors/wordpress/sync", { method: "POST" });
@@ -1680,6 +1820,13 @@ export function renderAdminPage(): string {
         if (target.dataset.tab) {
           setActiveTab(target.dataset.tab);
           window.history.replaceState({}, "", window.location.pathname + window.location.search + "#tab-" + target.dataset.tab);
+          if (window.matchMedia("(max-width: 760px)").matches) {
+            const heading = document.querySelector('[data-panel="' + target.dataset.tab + '"] h2');
+            if (heading) {
+              heading.setAttribute("tabindex", "-1");
+              heading.focus();
+            }
+          }
           return;
         }
 
@@ -1805,6 +1952,9 @@ export function renderAdminPage(): string {
       document.addEventListener("keydown", function(event) {
         if (event.key === "Escape" && !drawer.classList.contains("hidden")) {
           closeDrawer();
+        } else if (event.key === "Escape") {
+          document.getElementById("panel-nav").classList.remove("open");
+          document.getElementById("menu-toggle").setAttribute("aria-expanded", "false");
         }
       });
 
