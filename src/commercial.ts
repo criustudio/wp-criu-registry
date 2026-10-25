@@ -142,21 +142,9 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
     })) });
   });
 
-  app.post("/api/admin/connectors/commercial/enrollments", (req, res) => {
-    if (!admin(req, res)) return;
-    store.prune();
-    const code = token();
-    store.data.enrollments.push({ hash: hash(code), expiresAt: Date.now() + 20 * 60_000 });
-    store.save();
-    res.json({ ok: true, code, expiresInSeconds: 1200 });
-  });
-
   app.post("/commercial/v1/sites/register", async (req, res) => {
     try {
       const body = req.body as Record<string, unknown>;
-      const code = String(body.enrollment_code ?? "");
-      const enrollment = store.data.enrollments.find((item) => item.hash === hash(code) && item.expiresAt > Date.now());
-      if (!enrollment) { fail(res, 401, "La invitación de instalación venció o no es válida."); return; }
       const url = safeUrl(String(body.site_url ?? ""));
       const label = String(body.site_label ?? "").trim().slice(0, 120);
       const secret = String(body.site_secret ?? "");
@@ -170,9 +158,9 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
       const now = new Date().toISOString();
       const existing = store.data.sites.find((site) => site.id === id);
       if (existing && existing.secret !== secret) { fail(res, 409, "La web ya tiene otra conexión. Revísala desde el panel Criu."); return; }
-      if (existing) { existing.label = label; existing.updatedAt = now; existing.status = "active"; }
+      if (existing?.status === "suspended") { fail(res, 409, "Esta conexión está suspendida. Revísala desde el panel Criu."); return; }
+      if (existing) { existing.label = label; existing.updatedAt = now; }
       else { store.data.sites.push({ id, label, url, secret, status: "active", createdAt: now, updatedAt: now }); }
-      store.data.enrollments = store.data.enrollments.filter((item) => item !== enrollment);
       store.save();
       res.json({ ok: true, siteId: id, botUsername });
     } catch { fail(res, 400, "No se pudo registrar la web. Comprueba la URL HTTPS y vuelve a intentarlo."); }
@@ -262,22 +250,6 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
     const site = store.data.sites.find((item) => item.id === req.params.siteId && item.status === "active");
     if (!site) { fail(res, 404, "Conexión no disponible."); return; }
     try { res.json({ ok: true, url: await issueInvitation(site, req.body?.permissions), expiresInSeconds: 1200 }); }
-    catch (error) { fail(res, 400, error instanceof Error ? error.message : "Permisos no válidos."); }
-  });
-
-  app.post("/commercial/v1/sites/:siteId/invitations", async (req, res) => {
-    const siteId = String(req.params.siteId);
-    const site = store.data.sites.find((item) => item.id === siteId && item.status === "active");
-    const timestamp = String(req.headers["x-criu-timestamp"] ?? "");
-    const signature = String(req.headers["x-criu-signature"] ?? "");
-    const raw = req.body?.permissions;
-    const payload = Array.isArray(raw) ? raw.join(",") : "";
-    if (!site || !/^\d+$/.test(timestamp) || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300 ||
-      !/^[a-f0-9]{64}$/i.test(signature) ||
-      !crypto.timingSafeEqual(Buffer.from(signature.toLowerCase()), Buffer.from(sign(site.secret, timestamp, payload)))) {
-      fail(res, 401, "Conexión no autorizada."); return;
-    }
-    try { res.json({ ok: true, url: await issueInvitation(site, raw), expiresInSeconds: 1200 }); }
     catch (error) { fail(res, 400, error instanceof Error ? error.message : "Permisos no válidos."); }
   });
 
@@ -399,12 +371,12 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
     res.type("html").send(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Asistente comercial Criu</title>
 <style>body{font:16px system-ui;max-width:960px;margin:40px auto;padding:0 20px;color:#192521}button{padding:9px 14px;margin:5px}article{border:1px solid #ccd5d0;border-radius:10px;padding:18px;margin:14px 0}code{overflow-wrap:anywhere}label{display:block;margin:5px 0}</style>
 <h1>Asistente comercial Criu</h1><p><a href="/admin">Volver al panel MCP</a></p><p>Conexiones comerciales independientes del Bridge.</p>
-<button id="enroll">Crear código de instalación (20 minutos)</button><p id="enrollment"></p><p id="bot"></p><button id="connect-bot">Activar bot compartido</button><div id="sites"></div><p id="notice"></p>
+<p>Instala el plugin en WordPress y pulsa «Registrar con Criu». La web aparecerá aquí; genera la invitación desde su tarjeta.</p><p id="bot"></p><button id="connect-bot">Activar bot compartido</button><div id="sites"></div><p id="notice"></p>
 <script>
 const labels=${JSON.stringify(permissionLabels)};
 async function api(url,method='GET',body){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw Error(data.error||'Error');return data}
 async function render(){const data=await api('/api/admin/connectors/commercial/sites');document.getElementById('bot').textContent=data.botConfigured?'Bot configurado en el servidor':'Falta configurar el bot en el servidor';const box=document.getElementById('sites');box.replaceChildren();for(const site of data.sites){const card=document.createElement('article');const title=document.createElement('h2');title.textContent=site.label;card.append(title);const detail=document.createElement('p');detail.textContent=site.url+' · '+site.status+' · '+site.users.length+' persona(s)';card.append(detail);for(const person of site.users){const row=document.createElement('p');row.textContent=person.firstName+' ('+person.telegramId+') · '+person.permissions.map(x=>labels[x]||x).join(', ');const revoke=document.createElement('button');revoke.textContent='Revocar';revoke.onclick=async()=>{try{await api('/api/admin/connectors/commercial/sites/'+encodeURIComponent(site.id)+'/users/'+encodeURIComponent(person.telegramId)+'/revoke','POST');await render()}catch(e){document.getElementById('notice').textContent=e.message}};row.append(' ',revoke);card.append(row)}if(site.status==='active'){const form=document.createElement('div');for(const [key,label] of Object.entries(labels)){const row=document.createElement('label');const check=document.createElement('input');check.type='checkbox';check.value=key;check.checked=key!=='product.delete_permanently';row.append(check,document.createTextNode(' '+label));form.append(row)}card.append(form);const button=document.createElement('button');button.textContent='Crear invitación (20 minutos)';button.onclick=async()=>{try{const granted=[...form.querySelectorAll('input:checked')].map(x=>x.value);const result=await api('/api/admin/connectors/commercial/sites/'+encodeURIComponent(site.id)+'/invitations','POST',{permissions:granted});const link=document.createElement('a');link.href=result.url;link.textContent=result.url;link.target='_blank';const output=document.createElement('p');output.append('Enlace de un solo uso: ',link);card.append(output)}catch(e){document.getElementById('notice').textContent=e.message}};card.append(button)}box.append(card)}}
-document.getElementById('enroll').onclick=async()=>{try{const data=await api('/api/admin/connectors/commercial/enrollments','POST');document.getElementById('enrollment').textContent='Pega este código en Asistente Criu de la web antes de 20 minutos: '+data.code}catch(e){document.getElementById('notice').textContent=e.message}};render().catch(e=>document.getElementById('notice').textContent=e.message);
+render().catch(e=>document.getElementById('notice').textContent=e.message);
 document.getElementById('connect-bot').onclick=async()=>{try{const data=await api('/api/admin/connectors/commercial/connect-bot','POST');document.getElementById('notice').textContent='Bot conectado al panel Criu: '+data.url}catch(e){document.getElementById('notice').textContent=e.message}};
 </script></html>`);
   });
