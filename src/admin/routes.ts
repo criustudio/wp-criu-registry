@@ -25,7 +25,7 @@ const loginSchema = z.object({
 
 const pluginPackages = [
   { id: "codex-bridge", name: "Codex WP Admin Bridge", version: "0.4.0", file: "codex-wp-admin-bridge-0.4.0.zip", sha256: "255FBC9DDB3510A84261D213A173C3DA796E5CFBFCB5E161ABD3F4BCC15659A8", description: "Conecta el sitio WordPress con el Bridge del Hub." },
-  { id: "webmaster-ia", name: "Criu Asistente Comercial", version: "0.4.2", file: "criu-asistente-comercial-0.4.2.zip", sha256: "03D50656A1C1A7F58785F538DC2239C04D12E5525E5686E6781C4FB375144F93", description: "Vincula el sitio con Webmaster IA y las invitaciones de Telegram." },
+  { id: "webmaster-ia", name: "Criu Asistente Comercial", version: "0.4.3", file: "criu-asistente-comercial-0.4.3.zip", sha256: "51441ECCCFB9BF0A24323C1B31A2A3FEDFDA1027022B65857203F9600D5B10DC", description: "Vincula el sitio con Webmaster IA y las invitaciones de Telegram." },
 ] as const;
 
 function verifiedPluginArchive(plugin: (typeof pluginPackages)[number]): Buffer {
