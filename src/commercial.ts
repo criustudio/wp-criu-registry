@@ -276,6 +276,30 @@ export function registerCommercialRoutes(app: Express, config: AppConfig): void 
     } catch { fail(res, 502, "No se pudo revocar el acceso en la web."); }
   });
 
+  app.post("/api/admin/connectors/commercial/sites/:siteId/sync-permissions", async (req, res) => {
+    if (!admin(req, res)) return;
+    const site = store.data.sites.find((item) => item.id === req.params.siteId && item.status === "active");
+    if (!site) { fail(res, 404, "Conexión no disponible."); return; }
+    const members = store.data.users.flatMap((user) => user.memberships
+      .filter((membership) => membership.siteId === site.id && membership.active)
+      .map((membership) => ({ user, membership })));
+    let synchronized = 0;
+    for (const { user, membership } of members) {
+      try {
+        await requestSite(site, "hub-link", {
+          telegram_id: user.telegramId,
+          first_name: user.firstName,
+          permissions: membership.permissions,
+        });
+        synchronized += 1;
+      } catch {
+        fail(res, 502, `Se restauraron ${synchronized} de ${members.length} accesos. Revisa la conexión e inténtalo de nuevo.`);
+        return;
+      }
+    }
+    res.json({ ok: true, synchronized });
+  });
+
   app.post("/api/admin/connectors/commercial/connect-bot", async (req, res) => {
     if (!admin(req, res)) return;
     if (!botToken || !webhookSecret) { fail(res, 503, "Configura el token y el secreto del bot en el servicio."); return; }
